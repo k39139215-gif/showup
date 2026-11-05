@@ -104,18 +104,14 @@ export const ContentPage: React.FC<ContentPageProps> = ({
               style={{ cursor: 'pointer' }}
               data-t={t}
               onClick={() => setCq(t)}
-            >
-              #{t}
-            </span>
+            >{`#${t}`}</span>
           ))}
         </div>
       </Tray>
 
       <div className="g cm" style={{ marginTop: '14px' }}>
         <div>
-          <div className="muted" id="cc" style={{ marginBottom: '8px', fontSize: '13px' }}>
-            Showing {L.length} of {CT.length} items
-          </div>
+          <div className="muted" id="cc" style={{ marginBottom: '8px', fontSize: '13px' }}>{`Showing ${L.length} of ${CT.length} items`}</div>
           <div className="clist" id="clist">
             {L.length > 0 ? (
               L.map((c) => (
@@ -125,26 +121,13 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                   data-id={c.id}
                   onClick={() => setSel(c.id)}
                 >
-                  <div className="t">
-                    {badge(c.p)}
-                    {c.type}
-                    <span>·</span>
-                    {fmtD(c.date)}
-                  </div>
+                  <div className="t">{badge(c.p)}{c.type}<span>·</span>{fmtD(c.date)}</div>
                   <p>{c.text}</p>
                   <div className="meta">
-                    <span>
-                      Views <b className="mono">{c.views}</b>
-                    </span>
-                    <span>
-                      Likes <b className="mono">{c.likes}</b>
-                    </span>
-                    <span>
-                      Replies <b className="mono">{c.replies}</b>
-                    </span>
-                    <span className="mono" style={{ marginLeft: 'auto', color: 'var(--good)' }}>
-                      {c.eng.toFixed(2)}%
-                    </span>
+                    <span>{`Views `}<b className="mono">{c.views}</b></span>
+                    <span>{`Likes `}<b className="mono">{c.likes}</b></span>
+                    <span>{`Replies `}<b className="mono">{c.replies}</b></span>
+                    <span className="mono" style={{ marginLeft: 'auto', color: 'var(--good)' }}>{`${c.eng.toFixed(2)}%`}</span>
                   </div>
                 </div>
               ))
@@ -159,15 +142,10 @@ export const ContentPage: React.FC<ContentPageProps> = ({
               icon="eye"
               title="Performance observations"
               right={
-                <span className="muted mono" style={{ fontSize: '12px' }}>
-                  #{selectedItem.id}
-                </span>
+                <span className="muted mono" style={{ fontSize: '12px' }}>{`#${selectedItem.id}`}</span>
               }
             >
-              <span className="tag">
-                {selectedItem.p === 'li' ? 'LinkedIn' : 'X'} · {selectedItem.type}
-              </span>{' '}
-              <span className="tag">#{selectedItem.topic}</span>
+              <span className="tag">{`${selectedItem.p === 'li' ? 'LinkedIn' : 'X'} · ${selectedItem.type}`}</span> <span className="tag">{`#${selectedItem.topic}`}</span>
               <p style={{ lineHeight: 1.55, marginTop: '6px' }}>{selectedItem.text}</p>
               <div className="pg">
                 <div>
@@ -184,9 +162,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                 </div>
                 <div>
                   <small>Engagement</small>
-                  <b className="mono" style={{ color: 'var(--good)' }}>
-                    {selectedItem.eng.toFixed(2)}%
-                  </b>
+                  <b className="mono" style={{ color: 'var(--good)' }}>{`${selectedItem.eng.toFixed(2)}%`}</b>
                 </div>
               </div>
               <label className="fld">
