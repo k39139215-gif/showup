@@ -62,9 +62,7 @@ export const ReviewPage: React.FC = () => {
           <h1>Weekly executive review</h1>
           <p className="sub">Evidence-grounded observations and growth experiments</p>
         </div>
-        <span className="chip mono">
-          {fmtD(dayAt(N - 7))} – {fmtD(dayAt(N - 1))} · N={posts} posts, N={reps} replies
-        </span>
+        <span className="chip mono">{`${fmtD(dayAt(N - 7))} – ${fmtD(dayAt(N - 1))} · N=${posts} posts, N=${reps} replies`}</span>
       </div>
 
       <div className="banner">
@@ -86,31 +84,25 @@ export const ReviewPage: React.FC = () => {
           icon="target"
           title="Weekly activity vs target"
           right={
-            <span className={`pill ${pace >= 85 ? 'up' : 'wn'}`}>
-              {pace}% goal pacing
-            </span>
+            <span className={`pill ${pace >= 85 ? 'up' : 'wn'}`}>{`${pace}% goal pacing`}</span>
           }
         >
           <div className="gr">
             <div className="r">
               <span>Original posts published</span>
-              <span className="mono muted">
-                {posts} / {tp}
-              </span>
+              <span className="mono muted">{`${posts} / ${tp}`}</span>
             </div>
             <Segs f={posts / tp} c="#f26a1b" />
           </div>
           <div className="gr">
             <div className="r">
               <span>Outbound conversations & replies</span>
-              <span className="mono muted">
-                {reps} / {tr}
-              </span>
+              <span className="mono muted">{`${reps} / ${tr}`}</span>
             </div>
             <Segs f={reps / tr} c="#161616" />
           </div>
           <p className="muted mono" style={{ fontSize: '12px', marginTop: '16px' }}>
-            Active days this week: {act} of 7 · targets derived from daily goals
+            {`Active days this week: ${act} of 7 · targets derived from daily goals`}
           </p>
         </Tray>
 
@@ -123,9 +115,9 @@ export const ReviewPage: React.FC = () => {
             {act === 7 ? 'Seven for seven' : 'Consistency baseline established'}
           </b>
           <p className="muted" style={{ marginTop: '6px', lineHeight: 1.5 }}>
-            Activity is spread across {posts} posts. High-intent conversations in key accounts
-            (NetSuite and SAP AR) are the place to go deeper.
+            {`Activity is spread across ${posts} posts. High-intent conversations in key accounts (NetSuite and SAP AR) are the place to go deeper.`}
           </p>
+          {'\n      '}
           <p className="muted" style={{ fontSize: '12.5px', marginTop: '14px' }}>
             Rule: steady daily consistency compounds more than burst posting.
           </p>
@@ -134,10 +126,7 @@ export const ReviewPage: React.FC = () => {
 
       <div style={{ marginBottom: '14px' }}>
         <Tray icon="review" title="Key recorded observation">
-          Content tagged <b>“{by.t}”</b> has the highest engagement in the library:{' '}
-          <span className="mono">{Math.round(by.v)}</span> avg impressions,{' '}
-          <span className="mono">{by.e.toFixed(2)}%</span> engagement. Computed over all {CT.length}{' '}
-          items, not just this week.
+          {'Content tagged '}<b>{`“${by.t}”`}</b>{` has the highest engagement in the library: `}<span className="mono">{Math.round(by.v)}</span>{` avg impressions, `}<span className="mono">{`${by.e.toFixed(2)}%`}</span>{` engagement. Computed over all ${CT.length} items, not just this week.`}
         </Tray>
       </div>
 
