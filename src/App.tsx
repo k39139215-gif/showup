@@ -388,7 +388,7 @@ const AppContent: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="wrap" id="view" ref={viewRef}>
+          <div className="wrap" id="view" ref={viewRef} tabIndex={0} role="region" aria-label="Main content view">
             <div className="wrap-inner">{renderView()}</div>
           </div>
         </main>
