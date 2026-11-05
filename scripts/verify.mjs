@@ -60,15 +60,13 @@ function createServer(port) {
 const FIXED_TIME = new Date('2026-11-05T10:00:00+05:30');
 
 async function capture(page, url, setupAction) {
-  await page.clock.install({ time: FIXED_TIME });
   await page.goto(url, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
   if (setupAction) {
     await setupAction(page);
   }
-  // Wait a small buffer for layout/fonts to settle
-  await page.waitForTimeout(300);
-  const buffer = await page.screenshot({ fullPage: false });
+  await page.waitForTimeout(400);
+  const buffer = await page.screenshot();
   return buffer;
 }
 
@@ -97,7 +95,13 @@ async function run() {
 
   const browser = await chromium.launch({
     headless: true,
-    args: ['--font-render-hinting=none', '--disable-font-subpixel-positioning'],
+    args: [
+      '--font-render-hinting=none',
+      '--disable-font-subpixel-positioning',
+      '--hide-scrollbars',
+      '--disable-features=OverlayScrollbar,FluentScrollbar,FluentOverlayScrollbar',
+      '--run-all-compositor-stages-before-draw',
+    ],
   });
 
   const contextOptions = {
@@ -145,12 +149,14 @@ async function run() {
   for (const tc of testCases) {
     const origContext = await browser.newContext(contextOptions);
     const origPage = await origContext.newPage();
+    await origPage.clock.install({ time: FIXED_TIME });
     const origUrl = `http://localhost:${port}/original.html${tc.hash}`;
     const origBuf = await capture(origPage, origUrl, tc.action);
     await origContext.close();
 
     const reactContext = await browser.newContext(contextOptions);
     const reactPage = await reactContext.newPage();
+    await reactPage.clock.install({ time: FIXED_TIME });
     const reactUrl = `http://localhost:${port}/${tc.hash}`;
     const reactBuf = await capture(reactPage, reactUrl, tc.action);
     await reactContext.close();
