@@ -19,6 +19,14 @@ import { BoardSegmentedControl } from '../components/base/segmented-control/Boar
 import { Skeleton } from '../components/base/skeleton/skeleton';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { CalendarDate } from '@internationalized/date';
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+} from '../components/base/table/table';
 
 const TODAY_CALENDAR = new CalendarDate(2026, 11, 5);
 
@@ -203,6 +211,40 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
   const eng = totalViews ? (totalLikes / totalViews) * 100 : 0;
 
   const X = (f: (d: (typeof D)[0]) => number) => sum(S, f);
+  const platformRows = useMemo(() => {
+    const xPosts = sum(S, (d) => d.xp);
+    const xReplies = sum(S, (d) => d.xr);
+    const xViews = sum(S, (d) => d.xv);
+    const xLikes = sum(S, (d) => d.xl);
+    const xEng = xViews ? `${((xLikes / xViews) * 100).toFixed(2)}%` : '0.00%';
+
+    const liPosts = sum(S, (d) => d.lp);
+    const liReplies = sum(S, (d) => d.lr);
+    const liViews = sum(S, (d) => d.li);
+    const liLikes = sum(S, (d) => d.ll);
+    const liEng = liViews ? `${((liLikes / liViews) * 100).toFixed(2)}%` : '0.00%';
+
+    return [
+      {
+        id: 'x',
+        platform: 'X',
+        posts: xPosts,
+        replies: xReplies,
+        views: fmtK(xViews),
+        eng: xEng,
+        bestHour: '14:00 - 16:00',
+      },
+      {
+        id: 'li',
+        platform: 'LinkedIn',
+        posts: liPosts,
+        replies: liReplies,
+        views: fmtK(liViews),
+        eng: liEng,
+        bestHour: '09:00 - 11:00',
+      },
+    ];
+  }, [S]);
   const cmp: [string, string | number, string | number][] = [
     ['Original posts published', X((d) => d.xp), X((d) => d.lp)],
     ['Outbound replies / comments', X((d) => d.xr), X((d) => d.lr)],
@@ -345,24 +387,28 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
 
           <div className="g g2 transition-opacity duration-200">
             <Tray icon="today" title="Platform comparison">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Metric</th>
-                    <th>X</th>
-                    <th>LinkedIn</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cmp.map((r, i) => (
-                    <tr key={i}>
-                      <td>{r[0]}</td>
-                      <td className="mono">{r[1]}</td>
-                      <td className="mono">{r[2]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <Table aria-label="Platform performance comparison" size="sm" className="w-full text-[13px]">
+                <TableHeader>
+                  <TableColumn isRowHeader className="text-left font-medium p-2 text-neutral-500">Platform</TableColumn>
+                  <TableColumn className="text-right font-medium p-2 text-neutral-500">Posts</TableColumn>
+                  <TableColumn className="text-right font-medium p-2 text-neutral-500">Replies</TableColumn>
+                  <TableColumn className="text-right font-medium p-2 text-neutral-500">Total views</TableColumn>
+                  <TableColumn className="text-right font-medium p-2 text-neutral-500">Avg eng</TableColumn>
+                  <TableColumn className="text-right font-medium p-2 text-neutral-500">Best hour</TableColumn>
+                </TableHeader>
+                <TableBody items={platformRows}>
+                  {(item) => (
+                    <TableRow key={item.id} className="border-b border-[var(--line)] hover:bg-[#faf9f6]">
+                      <TableCell className="p-2 font-medium">{item.platform}</TableCell>
+                      <TableCell className="p-2 text-right font-mono">{item.posts}</TableCell>
+                      <TableCell className="p-2 text-right font-mono">{item.replies}</TableCell>
+                      <TableCell className="p-2 text-right font-mono">{item.views}</TableCell>
+                      <TableCell className="p-2 text-right font-mono text-[var(--good)]">{item.eng}</TableCell>
+                      <TableCell className="p-2 text-right font-mono text-neutral-500">{item.bestHour}</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </Tray>
 
             <Tray icon="trend" title="Recent volume profile (last 14 days of range)">

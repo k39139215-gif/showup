@@ -8,6 +8,7 @@ import {
 } from '../data';
 import { Icon, Segs, Tray, useCountTween } from '../utils';
 import { useDateRangeStore } from '../store/dateStore';
+import { Meter } from '../components/base/meter/meter';
 
 export const ReviewPage: React.FC = () => {
   const { dateSlice, daysCount, rangeLabel, hasData } = useDateRangeStore();
@@ -33,6 +34,10 @@ export const ReviewPage: React.FC = () => {
 
   const small = posts < 30;
   const pace = tp + tr > 0 ? Math.round(((posts + reps) / (tp + tr)) * 100) : 0;
+  const postPct = tp > 0 ? Math.round((posts / tp) * 100) : 0;
+  const repPct = tr > 0 ? Math.round((reps / tr) * 100) : 0;
+  const postTone = postPct >= 90 ? 'success' : postPct >= 50 ? 'warning' : 'accent';
+  const repTone = repPct >= 90 ? 'success' : repPct >= 50 ? 'warning' : 'accent';
   const tweenPace = useCountTween(pace);
 
   const ex = [
@@ -112,19 +117,25 @@ export const ReviewPage: React.FC = () => {
                 <span className={`pill ${pace >= 85 ? 'up' : 'wn'}`}>{`${tweenPace}% goal pacing`}</span>
               }
             >
-              <div className="gr">
-                <div className="r">
-                  <span>Original posts published</span>
-                  <span className="mono muted">{`${tweenPosts} / ${tp}`}</span>
-                </div>
-                <Segs f={tp > 0 ? posts / tp : 0} c="#f26a1b" />
+              <div className="gr flex flex-col gap-1.5">
+                <Meter
+                  label="Original posts published"
+                  value={posts}
+                  maxValue={tp}
+                  valueLabel={`${tweenPosts} / ${tp} (${postPct}%)`}
+                  tone={postTone}
+                />
+                <Segs f={tp > 0 ? posts / tp : 0} c={postPct >= 90 ? '#0e9f6e' : '#f26a1b'} />
               </div>
-              <div className="gr">
-                <div className="r">
-                  <span>Outbound conversations & replies</span>
-                  <span className="mono muted">{`${tweenReps} / ${tr}`}</span>
-                </div>
-                <Segs f={tr > 0 ? reps / tr : 0} c="#161616" />
+              <div className="gr flex flex-col gap-1.5 mt-3">
+                <Meter
+                  label="Outbound conversations & replies"
+                  value={reps}
+                  maxValue={tr}
+                  valueLabel={`${tweenReps} / ${tr} (${repPct}%)`}
+                  tone={repTone}
+                />
+                <Segs f={tr > 0 ? reps / tr : 0} c={repPct >= 90 ? '#0e9f6e' : '#161616'} />
               </div>
               <p className="muted mono" style={{ fontSize: '12px', marginTop: '16px' }}>
                 {`Active days in period: ${act} of ${daysCount} · targets derived from daily goals`}

@@ -22,6 +22,8 @@ import {
   CommandPaletteItem,
 } from './components/base/command-palette/command-palette';
 import { Drawer } from './components/base/drawer/drawer';
+import { Modal } from './components/base/modal/modal';
+import { NumberField } from './components/base/number-field/number-field';
 import { DateStoreProvider, useDateRangeStore } from './store/dateStore';
 
 const TITLES: Record<string, string> = {
@@ -74,7 +76,7 @@ const AppContent: React.FC = () => {
   const { scheduledAt, setRange, setSingleDate } = useDateRangeStore();
 
   // Dialog state
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [dialogPlat, setDialogPlat] = useState<string>('x');
   const [dialogType, setDialogType] = useState<string>('p');
   const [dialogCount, setDialogCount] = useState<number>(1);
@@ -115,15 +117,11 @@ const AppContent: React.FC = () => {
   };
 
   const handleOpenDialog = () => {
-    if (dialogRef.current) {
-      dialogRef.current.showModal();
-    }
+    setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
-    if (dialogRef.current) {
-      dialogRef.current.close();
-    }
+    setIsDialogOpen(false);
   };
 
   const handleAddActivity = () => {
@@ -132,9 +130,7 @@ const AppContent: React.FC = () => {
     const n = Math.max(1, dialogCount);
     const key = p === 'x' ? (t === 'p' ? 'xp' : 'xr') : (t === 'p' ? 'lp' : 'lr');
     D[N - 1][key] += n;
-    if (dialogRef.current) {
-      dialogRef.current.close();
-    }
+    setIsDialogOpen(false);
     setTick((prev) => prev + 1);
 
     toast.success('Activity added to today', {
@@ -400,8 +396,14 @@ const AppContent: React.FC = () => {
 
       <LoginPage />
 
-      <dialog id="dlg" ref={dialogRef}>
-        <h3 style={{ fontSize: '18px', letterSpacing: '-.02em' }}>Add activity</h3>
+      <Modal
+        id="dlg"
+        isOpen={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        aria-label="Add activity"
+        className="p-6 rounded-2xl bg-white border border-[var(--line)] shadow-2xl max-w-md w-full flex flex-col gap-3"
+      >
+        <h3 style={{ fontSize: '18px', letterSpacing: '-.02em', fontWeight: 600 }}>Add activity</h3>
         <label className="fld">
           Platform
           <BoardSelect
@@ -422,18 +424,17 @@ const AppContent: React.FC = () => {
             aria-label="Activity type"
           />
         </label>
-        <label className="fld">
-          Count
-          <input
+        <div className="fld">
+          <NumberField
             id="a_n"
-            type="number"
-            min="1"
+            label="Count"
+            minValue={1}
+            maxValue={999}
             value={dialogCount}
-            onChange={(e) =>
-              setDialogCount(Math.max(1, parseInt(e.target.value, 10) || 1))
-            }
+            onChange={(val) => setDialogCount(val || 1)}
+            aria-label="Count"
           />
-        </label>
+        </div>
         {scheduledAt && (
           <div
             style={{
@@ -441,7 +442,7 @@ const AppContent: React.FC = () => {
               padding: '8px 10px',
               background: 'var(--card-tray)',
               borderRadius: '8px',
-              marginTop: '10px',
+              marginTop: '4px',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
@@ -454,7 +455,7 @@ const AppContent: React.FC = () => {
             </span>
           </div>
         )}
-        <menu>
+        <menu style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
           <button
             className="btn ghost"
             id="a_c"
@@ -472,7 +473,7 @@ const AppContent: React.FC = () => {
             {scheduledAt ? 'Schedule activity' : 'Add to today'}
           </button>
         </menu>
-      </dialog>
+      </Modal>
 
       <CommandPalette
         isOpen={isCommandPaletteOpen}

@@ -140,6 +140,7 @@ export function ModalTrigger({ children, ...props }: ModalTriggerProps) {
 /* -------------------------------------------------------------------- modal */
 
 export interface ModalProps extends Omit<ModalOverlayProps, "children" | "className" | "style"> {
+  id?: string;
   /** Panel width: 400, 480 (default), 640, or 800px. */
   size?: ModalSize;
   /** `alertdialog` for confirmations that interrupt the user; see AlertDialog. */
@@ -154,6 +155,7 @@ export interface ModalProps extends Omit<ModalOverlayProps, "children" | "classN
 }
 
 export function Modal({
+  id,
   size = "md",
   role,
   "aria-label": ariaLabel,
@@ -169,7 +171,7 @@ export function Modal({
     <AriaModalOverlay {...props} dir={direction} isDismissable={isDismissable} className={cx(styles.overlay, overlayClassName)}>
       <div aria-hidden className={styles.backdrop} />
       <AriaModal className={cx(styles.modal, styles.size[size])}>
-        <ModalDialog role={role} aria-label={ariaLabel} className={className}>
+        <ModalDialog id={id} role={role} aria-label={ariaLabel} className={className}>
           {children}
         </ModalDialog>
       </AriaModal>
@@ -178,6 +180,7 @@ export function Modal({
 }
 
 export interface ModalDialogProps {
+  id?: string;
   role?: "dialog" | "alertdialog";
   "aria-label"?: string;
   /** Classes merged onto the panel surface. */
@@ -190,12 +193,13 @@ export interface ModalDialogProps {
  * ModalHeader title names it and the description is wired to
  * aria-describedby. Render it inside a React Aria Modal.
  */
-export function ModalDialog({ role, "aria-label": ariaLabel, className, children }: ModalDialogProps) {
+export function ModalDialog({ id, role, "aria-label": ariaLabel, className, children }: ModalDialogProps) {
   const descriptionId = useId();
   const [described, setDescribed] = useState(false);
 
   return (
     <AriaDialog
+      id={id}
       role={role}
       aria-label={ariaLabel}
       aria-describedby={described ? descriptionId : undefined}

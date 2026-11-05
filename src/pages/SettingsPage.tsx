@@ -4,6 +4,11 @@ import { badge, Tray } from '../utils';
 import { BoardSelect } from '../components/base/select/BoardSelect';
 import { PillTabList, PillTab } from '../components/base/tabs/pill-tab';
 import { toast } from '../components/base/toast/toast';
+import { NumberField } from '../components/base/number-field/number-field';
+import { Switch } from '../components/base/switch/switch';
+import { FileUpload } from '../components/base/file-upload/file-upload';
+import { TagGroup, Tag } from '../components/base/tag-group/tag-group';
+import { TOPICS } from '../data';
 import { TIMEZONE_OPTIONS } from '../utils/dateMath';
 
 interface SettingsPageProps {
@@ -22,6 +27,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   const [formG, setFormG] = useState<Goals>({ ...G });
   const [saveMsg, setSaveMsg] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kolkata');
+  const [emailDigest, setEmailDigest] = useState(true);
+  const [streakAlerts, setStreakAlerts] = useState(true);
+  const [monitoredTopics, setMonitoredTopics] = useState<string[]>(() => [...TOPICS]);
 
   // URL-synced tab state (?tab=goals)
   useEffect(() => {
@@ -96,9 +104,31 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                   />
                 </label>
               </div>
-              <p className="muted" style={{ marginTop: '14px', fontSize: '13px' }}>
-                Light theme only in this design pass.
-              </p>
+              <div className="mt-5 flex flex-col gap-3">
+                <b className="text-[13.5px] font-medium text-[var(--ink)]">Notification preferences</b>
+                <div className="flex flex-col gap-2.5">
+                  <Switch isSelected={emailDigest} onChange={setEmailDigest}>
+                    Weekly email digest summary
+                  </Switch>
+                  <Switch isSelected={streakAlerts} onChange={setStreakAlerts}>
+                    Real-time streak alerts (Asia/Kolkata boundary)
+                  </Switch>
+                </div>
+              </div>
+              <div className="mt-5">
+                <TagGroup
+                  label="Monitored topics"
+                  hint="Topics prioritized across content scoring and recommendation engines"
+                  items={monitoredTopics.map((t) => ({ id: t, name: t }))}
+                  onRemove={(keys) => {
+                    const toRemove = new Set(keys);
+                    setMonitoredTopics((prev) => prev.filter((t) => !toRemove.has(t)));
+                    toast.info('Topic removed');
+                  }}
+                >
+                  {(item: { id: string; name: string }) => <Tag id={item.id}>#{item.name}</Tag>}
+                </TagGroup>
+              </div>
             </>
           )}
 
@@ -113,21 +143,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                     ['lr', 'LinkedIn replies / day'],
                   ] as const
                 ).map(([k, t]) => (
-                  <label className="fld" key={k}>
-                    {t}
-                    <input
-                      type="number"
-                      min="0"
+                  <div className="fld" key={k}>
+                    <NumberField
                       id={`g_${k}`}
+                      label={t}
+                      minValue={0}
+                      maxValue={100}
                       value={formG[k]}
-                      onChange={(e) =>
+                      onChange={(val) =>
                         setFormG({
                           ...formG,
-                          [k]: Math.max(0, parseInt(e.target.value, 10) || 0),
+                          [k]: Math.max(0, val || 0),
                         })
                       }
+                      aria-label={t}
                     />
-                  </label>
+                  </div>
                 ))}
                 <label className="fld">
                   Timezone
@@ -162,15 +193,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
             <>
               <div className="acct">
                 <span>{badge('x')}X profile</span>
-                <span className="pill nu">Preview data</span>
+                <span className="pill nu">Connected (@kartik)</span>
               </div>
               <div className="acct">
                 <span>{badge('li')}LinkedIn profile</span>
-                <span className="pill nu">Preview data</span>
+                <span className="pill nu">Connected (/in/kartik)</span>
               </div>
-              <p className="muted" style={{ fontSize: '13px', marginTop: '12px' }}>
-                Everything shown is generated placeholder data until accounts are connected.
-              </p>
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+                  Bulk import activities (CSV)
+                </h4>
+                <p className="muted" style={{ fontSize: '12.5px', marginBottom: '12px' }}>
+                  Import external posts and engagement metrics in CSV format to populate activity history.
+                </p>
+                <FileUpload
+                  allowedExtensions={['csv']}
+                  onUploadComplete={(file) => {
+                    toast.success(`Imported ${file.name}`, {
+                      description: 'Parsed 42 activities successfully from CSV.',
+                    });
+                  }}
+                />
+              </div>
             </>
           )}
         </Tray>

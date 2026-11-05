@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { CT, TOPICS } from '../data';
 import { Icon, Tray } from '../utils';
 import { useDateRangeStore } from '../store/dateStore';
@@ -14,7 +14,12 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from '../components/base/context-menu/context-menu';
-import { RiMoreLine } from '@remixicon/react';
+import { SearchField } from '../components/base/search-field/search-field';
+import { TagGroup, Tag } from '../components/base/tag-group/tag-group';
+import { Chip } from '../components/base/badges/chip';
+import { Pagination } from '../components/base/pagination/pagination';
+import { Textarea } from '../components/base/textarea/textarea';
+import { RiMoreLine, RiCloseLine } from '@remixicon/react';
 
 interface ContentPageProps {
   plat: string;
@@ -92,7 +97,42 @@ export const ContentPage: React.FC<ContentPageProps> = ({
     }
   }, [inRangeCT, sel, L, setSel]);
 
+  // Pagination: 25 items per page (Requirement 19)
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 25;
+  const totalPages = Math.max(1, Math.ceil(L.length / pageSize));
+  const paginatedL = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return L.slice(start, start + pageSize);
+  }, [L, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [plat, ct, cs, cq, rangeLabel]);
+
   const selectedItem = inRangeCT.find((x) => x.id === sel);
+
+  // Note editor debounced save (Requirement 16)
+  const [noteVal, setNoteVal] = useState(selectedItem?.note || '');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setNoteVal(selectedItem?.note || '');
+    setSaveStatus('idle');
+  }, [selectedItem?.id]);
+
+  const handleNoteChange = (text: string) => {
+    setNoteVal(text);
+    if (!selectedItem) return;
+    setSaveStatus('saving');
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      selectedItem.note = text;
+      setSaveStatus('saved');
+      toast.success('Strategic note saved');
+    }, 500);
+  };
 
   return (
     <>
@@ -104,29 +144,17 @@ export const ContentPage: React.FC<ContentPageProps> = ({
       </div>
 
       <Tray icon="content" title="Library">
-        <div className="fbar">
-          <div className="sbox">
-            <Icon name="analytics" size={0} />
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="M20 20l-3.5-3.5" />
-            </svg>
-            <input
-              id="cq"
-              type="text"
-              placeholder="Search keywords (NetSuite, lockbox, unapplied cash)…"
-              value={cq}
-              onChange={(e) => setCq(e.target.value)}
-            />
-          </div>
+        <div className="fbar flex items-center gap-3">
+          <SearchField
+            inputId="cq"
+            aria-label="Search content keywords"
+            placeholder="Search keywords (NetSuite, lockbox, unapplied cash)…"
+            value={cq}
+            onChange={setCq}
+            shape="rounded"
+            className="flex-1 min-w-[280px]"
+            fieldClassName="h-[40px] rounded-xl border border-[var(--line)] bg-white text-[13px] px-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+          />
 
           <BoardSelect
             id="ct"
@@ -147,26 +175,62 @@ export const ContentPage: React.FC<ContentPageProps> = ({
           />
         </div>
 
-        <div className="fbar" style={{ marginTop: '12px' }}>
-          {TOPICS.map((t) => (
-            <span
-              key={t}
-              className="pill nu"
-              style={{ cursor: 'pointer' }}
-              data-t={t}
-              onClick={() => setCq(t)}
-            >{`#${t}`}</span>
-          ))}
-          {cq && (
-            <span
-              className="pill or"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setCq('')}
-            >
-              Clear filter ✕
-            </span>
-          )}
+        <div style={{ marginTop: '14px' }}>
+          <TagGroup
+            label="Filter by topic"
+            aria-label="Topics"
+            selectionMode="single"
+            selectedKeys={cq ? [cq] : []}
+            onSelectionChange={(keys) => {
+              const selectedKey = Array.from(keys)[0];
+              setCq(selectedKey ? String(selectedKey) : '');
+            }}
+            items={TOPICS.map((t) => ({ id: t, name: t }))}
+          >
+            {(item: { id: string; name: string }) => (
+              <Tag id={item.id} data-t={item.name} className="cursor-pointer">
+                #{item.name}
+              </Tag>
+            )}
+          </TagGroup>
         </div>
+
+        {(plat !== 'all' || ct !== 'all' || cq) && (
+          <div className="flex items-center gap-2 flex-wrap mt-3 pt-2 border-t border-[var(--line)]">
+            <span className="text-xs text-neutral-400 font-medium">Active filters:</span>
+            {plat !== 'all' && (
+              <Chip color="orange" className="gap-1 pr-1">
+                <span>Platform: {plat === 'x' ? 'X' : 'LinkedIn'}</span>
+              </Chip>
+            )}
+            {ct !== 'all' && (
+              <Chip color="blue" className="gap-1 pr-1">
+                <span>Type: {CONTENT_TYPE_OPTIONS.find((o) => o.value === ct)?.label || ct}</span>
+                <button
+                  type="button"
+                  className="hover:opacity-75 cursor-pointer ml-1 inline-flex items-center"
+                  onClick={() => setCt('all')}
+                  aria-label="Clear content type filter"
+                >
+                  <RiCloseLine className="size-3.5" />
+                </button>
+              </Chip>
+            )}
+            {cq && (
+              <Chip color="neutral" className="gap-1 pr-1">
+                <span>Query: {cq}</span>
+                <button
+                  type="button"
+                  className="hover:opacity-75 cursor-pointer ml-1 inline-flex items-center"
+                  onClick={() => setCq('')}
+                  aria-label="Clear query filter"
+                >
+                  <RiCloseLine className="size-3.5" />
+                </button>
+              </Chip>
+            )}
+          </div>
+        )}
 
         <div className="muted" style={{ fontSize: '12.5px', margin: '14px 0 10px' }}>
           {`Showing ${L.length} of ${inRangeCT.length} items`}
@@ -186,7 +250,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
           <div className="cm g">
             <Skeleton isLoaded={isLoaded} className="w-full">
               <div className="clist">
-                {L.map((c) => (
+                {paginatedL.map((c) => (
                   <ContextMenuTrigger key={c.id}>
                     <div
                       className={`cit ${c.id === sel ? 'on' : ''}`}
@@ -276,6 +340,15 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                   </ContextMenuTrigger>
                 ))}
               </div>
+              {totalPages > 1 && (
+                <div className="mt-4 flex justify-center">
+                  <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onChange={setCurrentPage}
+                  />
+                </div>
+              )}
             </Skeleton>
 
             {selectedItem && (
@@ -327,17 +400,21 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                   </div>
                 </div>
                 <div className="fld" style={{ marginTop: '10px' }}>
-                  Strategic note
-                  <textarea
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--ink)' }}>Strategic note</span>
+                    <span style={{ fontSize: '11.5px', color: 'var(--mute)' }}>
+                      {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : ''}
+                    </span>
+                  </div>
+                  <Textarea
                     id="cn"
                     placeholder="Add qualitative observation or follow-up hook…"
-                    value={selectedItem.note}
-                    onChange={(e) => {
-                      selectedItem.note = e.target.value;
-                    }}
-                    onBlur={() => {
-                      toast.success('Strategic note saved');
-                    }}
+                    value={noteVal}
+                    onChange={(val) => handleNoteChange(val)}
+                    autoResize
+                    maxLength={500}
+                    showCount
+                    rows={3}
                   />
                 </div>
               </div>
