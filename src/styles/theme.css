@@ -296,12 +296,12 @@
   --color-questionnaire-key-background:          var(--color-neutral-100);
   --color-questionnaire-key-hover-background:    var(--color-neutral-200);
   --color-agent-progress-ring:                     var(--color-neutral-700);
-  --color-button-ghost-background:                var(--color-accent-100);
-  --color-button-ghost-hover:                     var(--color-accent-200);
-  --color-button-ghost-active:                    var(--color-accent-300);
-  --color-button-ghost-disabled:                  var(--color-accent-50);
-  --color-button-ghost-foreground:                var(--color-accent-700);
-  --color-button-ghost-disabled-foreground:       var(--color-accent-300);
+  --color-button-ghost-background:                transparent;
+  --color-button-ghost-hover:                     var(--color-neutral-100);
+  --color-button-ghost-active:                    var(--color-neutral-200);
+  --color-button-ghost-disabled:                  transparent;
+  --color-button-ghost-foreground:                var(--color-text-primary);
+  --color-button-ghost-disabled-foreground:       var(--color-neutral-300);
   --color-dropdown-item-hover-background:        var(--color-neutral-100);
   --color-kbd-background:                        var(--color-neutral-300);
   --color-kbd-foreground:                        var(--color-neutral-500);
@@ -409,9 +409,9 @@
   --color-chart-agents-bar-active: var(--color-purple-400);
 
   /* Button gradients */
-  --gradient-button-primary-default:  linear-gradient(180deg, var(--color-accent-500)    0%, var(--color-accent-600)    100%);
-  --gradient-button-primary-hover:    linear-gradient(180deg, var(--color-accent-400)    0%, var(--color-accent-500)    100%);
-  --gradient-button-primary-active:   linear-gradient(180deg, var(--color-accent-600)    0%, var(--color-accent-700)    100%);
+  --gradient-button-primary-default:  linear-gradient(180deg, #1f1f1f    0%, #161616    100%);
+  --gradient-button-primary-hover:    linear-gradient(180deg, #2e2e2e    0%, #222222    100%);
+  --gradient-button-primary-active:   linear-gradient(180deg, #161616    0%, #0d0d0d    100%);
   --gradient-button-primary-disabled: linear-gradient(180deg, var(--color-neutral-200) 0%, var(--color-neutral-300) 100%);
 
   --gradient-button-danger-default:   linear-gradient(180deg, var(--color-red-500) 0%, var(--color-red-600) 100%);
@@ -887,6 +887,7 @@
 @utility bg-button-primary {
   position: relative;
   isolation: isolate;
+  background-color: #161616;
   background-image: var(--gradient-button-primary-default);
 
   &::before {

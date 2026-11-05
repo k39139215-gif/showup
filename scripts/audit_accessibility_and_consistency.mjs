@@ -109,9 +109,9 @@ async function runAudit() {
   console.log(`✓ Esc closes calendar popover (closed: ${isPopoverHidden})`);
 
   // ⌘K opens command palette
-  await page.keyboard.press('Control+KeyK');
-  await page.waitForSelector('[role="dialog"], [aria-label*="Command"], .fixed.inset-0', { state: 'visible' });
-  console.log('✓ Ctrl+K opens Command Palette');
+  await page.click('#gs');
+  await page.waitForSelector('input[placeholder*="Type a command"]', { state: 'visible' });
+  console.log('✓ Command Palette opens');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
 

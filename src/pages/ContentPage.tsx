@@ -153,7 +153,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
             onChange={setCq}
             shape="rounded"
             className="flex-1 min-w-[280px]"
-            fieldClassName="h-[40px] rounded-xl border border-[var(--line)] bg-white text-[13px] px-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+            fieldClassName="h-[40px] rounded-xl border border-[var(--line)] focus-within:border-transparent bg-white text-[13px] px-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
           />
 
           <BoardSelect

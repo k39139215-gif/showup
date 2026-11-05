@@ -5,21 +5,19 @@ import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
   RiTimeLine,
-  RiCheckLine,
-  RiCloseLine,
 } from '@remixicon/react';
 import { useDateRangeStore, ScheduledAt } from '../store/dateStore';
 import {
   daysInRange,
   swapIfReversed,
   calendarDateToJsDate,
-  jsDateToCalendarDate,
   convertSlotTimezone,
   TIMEZONE_OPTIONS,
 } from '../utils/dateMath';
-import { TODAY } from '../data';
 import { BoardSelect } from './base/select/BoardSelect';
 import { BoardSegmentedControl } from './base/segmented-control/BoardSegmentedControl';
+import { Button } from './base/buttons/button';
+import { CloseButton } from './base/buttons/close-button';
 import { Tooltip, TooltipTrigger } from './base/tooltip/tooltip';
 import { toast } from './base/toast/toast';
 import { cx } from '../utils/cx';
@@ -127,13 +125,26 @@ export const UnifiedDatePicker: React.FC = () => {
     rangeLabel,
     setRange,
     setSingleDate,
-    setMode,
     setScheduledAt,
   } = useDateRangeStore();
 
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Track viewport width for responsive layouts
+  const [viewportWidth, setViewportWidth] = useState<number>(
+    typeof window !== 'undefined' ? window.innerWidth : 1440
+  );
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isDesktop = viewportWidth >= 1100;
+  const isMobile = viewportWidth < 640;
 
   // Draft state inside popover
   const [draftMode, setDraftMode] = useState<'single' | 'range'>(mode);
@@ -142,14 +153,18 @@ export const UnifiedDatePicker: React.FC = () => {
   const [pickingEnd, setPickingEnd] = useState(false);
   const [hoverDate, setHoverDate] = useState<CalendarDate | null>(null);
 
-  // Month navigation (offset 0 = month of start/end, dual-month has month 0 and month 1)
-  const [visibleMonth, setVisibleMonth] = useState<CalendarDate>(new CalendarDate(start.year, start.month, 1));
+  // Month navigation
+  const [visibleMonth, setVisibleMonth] = useState<CalendarDate>(
+    new CalendarDate(start.year, start.month, 1)
+  );
 
   // Time slots sidebar
   const [addTimeOpen, setAddTimeOpen] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState<string>('Asia/Kolkata');
   const [is24Hour, setIs24Hour] = useState(false);
-  const [selectedSlotMinutes, setSelectedSlotMinutes] = useState<number>(scheduledAt?.minutes ?? 540); // 09:00
+  const [selectedSlotMinutes, setSelectedSlotMinutes] = useState<number>(
+    scheduledAt?.minutes ?? 540
+  );
 
   // Manual inputs
   const [startInputText, setStartInputText] = useState('');
@@ -164,8 +179,12 @@ export const UnifiedDatePicker: React.FC = () => {
       setPickingEnd(false);
       setHoverDate(null);
       setVisibleMonth(new CalendarDate(start.year, start.month, 1));
-      setStartInputText(`${String(start.day).padStart(2, '0')}/${String(start.month).padStart(2, '0')}/${start.year}`);
-      setEndInputText(`${String(end.day).padStart(2, '0')}/${String(end.month).padStart(2, '0')}/${end.year}`);
+      setStartInputText(
+        `${String(start.day).padStart(2, '0')}/${String(start.month).padStart(2, '0')}/${start.year}`
+      );
+      setEndInputText(
+        `${String(end.day).padStart(2, '0')}/${String(end.month).padStart(2, '0')}/${end.year}`
+      );
       setAddTimeOpen(Boolean(scheduledAt));
       if (scheduledAt) {
         setSelectedTimezone(scheduledAt.timeZone);
@@ -176,8 +195,12 @@ export const UnifiedDatePicker: React.FC = () => {
 
   // Keep manual text inputs in sync with draft dates
   useEffect(() => {
-    setStartInputText(`${String(draftStart.day).padStart(2, '0')}/${String(draftStart.month).padStart(2, '0')}/${draftStart.year}`);
-    setEndInputText(`${String(draftEnd.day).padStart(2, '0')}/${String(draftEnd.month).padStart(2, '0')}/${draftEnd.year}`);
+    setStartInputText(
+      `${String(draftStart.day).padStart(2, '0')}/${String(draftStart.month).padStart(2, '0')}/${draftStart.year}`
+    );
+    setEndInputText(
+      `${String(draftEnd.day).padStart(2, '0')}/${String(draftEnd.month).padStart(2, '0')}/${draftEnd.year}`
+    );
   }, [draftStart, draftEnd]);
 
   // Detect which preset matches draft range
@@ -313,9 +336,13 @@ export const UnifiedDatePicker: React.FC = () => {
     }
     // Revert if invalid
     if (isStart) {
-      setStartInputText(`${String(draftStart.day).padStart(2, '0')}/${String(draftStart.month).padStart(2, '0')}/${draftStart.year}`);
+      setStartInputText(
+        `${String(draftStart.day).padStart(2, '0')}/${String(draftStart.month).padStart(2, '0')}/${draftStart.year}`
+      );
     } else {
-      setEndInputText(`${String(draftEnd.day).padStart(2, '0')}/${String(draftEnd.month).padStart(2, '0')}/${draftEnd.year}`);
+      setEndInputText(
+        `${String(draftEnd.day).padStart(2, '0')}/${String(draftEnd.month).padStart(2, '0')}/${draftEnd.year}`
+      );
     }
   };
 
@@ -339,46 +366,75 @@ export const UnifiedDatePicker: React.FC = () => {
     const month = monthDate.month;
     const firstDay = new CalendarDate(year, month, 1);
     const jsFirst = calendarDateToJsDate(firstDay);
-    const dayOfWeek = (jsFirst.getDay() + 6) % 7; // Monday = 0
+    const dayOfWeek = (jsFirst.getDay() + 6) % 7; // Monday = 0, Sunday = 6
 
     // Number of days in month
     const jsNextMonth = new Date(year, month, 0);
     const totalDays = jsNextMonth.getDate();
 
     const cells: React.ReactNode[] = [];
-    // Empty prefix cells
+
+    // Prefix empty cells
     for (let i = 0; i < dayOfWeek; i++) {
-      cells.push(<div key={`empty-${i}`} className="size-8" />);
+      cells.push(<div key={`empty-pre-${i}`} className="size-[40px]" />);
     }
 
+    // Days of month
     for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
       const cellDate = new CalendarDate(year, month, dayNum);
       const isFuture = cellDate.compare(TODAY_CALENDAR) > 0;
       const isStart = cellDate.compare(activeEffectiveRange.start) === 0;
       const isEnd = cellDate.compare(activeEffectiveRange.end) === 0;
       const isInRange =
-        cellDate.compare(activeEffectiveRange.start) >= 0 && cellDate.compare(activeEffectiveRange.end) <= 0;
+        cellDate.compare(activeEffectiveRange.start) >= 0 &&
+        cellDate.compare(activeEffectiveRange.end) <= 0;
       const isEdge = isStart || isEnd;
       const isSingleDay = activeEffectiveRange.start.compare(activeEffectiveRange.end) === 0;
+
+      const cellIndex = dayOfWeek + dayNum - 1;
+      const isRowStart = cellIndex % 7 === 0;
+      const isRowEnd = cellIndex % 7 === 6;
 
       cells.push(
         <div
           key={`day-${dayNum}`}
-          className="relative size-8 flex items-center justify-center select-none"
+          className="relative size-[40px] flex items-center justify-center select-none"
           onMouseEnter={() => {
             if (pickingEnd && !isFuture) setHoverDate(cellDate);
           }}
         >
-          {/* Light blue range connector */}
+          {/* Continuous light blue range fill across cells (no gaps inside band) */}
           {isInRange && !isSingleDay && draftMode === 'range' && (
-            <span
-              aria-hidden
-              className={cx(
-                'absolute inset-y-0 bg-[#dbeafe] z-0 transition-[border-radius] duration-100',
-                isStart ? 'start-1/2 rounded-s-lg' : 'start-0',
-                isEnd ? 'end-1/2 rounded-e-lg' : 'end-0'
+            <>
+              {isStart && !isEnd && (
+                <span
+                  aria-hidden
+                  className={cx(
+                    'absolute inset-y-0 left-1/2 bg-[#dbeafe] z-0 rounded-l-[10px]',
+                    isRowEnd ? 'right-0 rounded-r-[10px]' : '-right-[2px]'
+                  )}
+                />
               )}
-            />
+              {isEnd && !isStart && (
+                <span
+                  aria-hidden
+                  className={cx(
+                    'absolute inset-y-0 right-1/2 bg-[#dbeafe] z-0 rounded-r-[10px]',
+                    isRowStart ? 'left-0 rounded-l-[10px]' : '-left-[2px]'
+                  )}
+                />
+              )}
+              {isInRange && !isEdge && (
+                <span
+                  aria-hidden
+                  className={cx(
+                    'absolute inset-y-0 bg-[#dbeafe] z-0',
+                    isRowStart ? 'left-0 rounded-l-[10px]' : '-left-[2px]',
+                    isRowEnd ? 'right-0 rounded-r-[10px]' : '-right-[2px]'
+                  )}
+                />
+              )}
+            </>
           )}
 
           {/* Cell button */}
@@ -387,7 +443,8 @@ export const UnifiedDatePicker: React.FC = () => {
               <button
                 type="button"
                 disabled
-                className="day-cell relative z-10 size-8 flex items-center justify-center rounded-lg text-[13px] font-medium outline-none transition-colors border-0 opacity-25 cursor-not-allowed text-[#a9a69d]"
+                tabIndex={-1}
+                className="day-cell relative z-10 size-[40px] flex items-center justify-center rounded-[10px] text-[14px] font-medium font-sans tabular-nums border-0 opacity-40 cursor-not-allowed text-[#a9a69d] hover:bg-transparent pointer-events-none"
               >
                 {dayNum}
               </button>
@@ -398,12 +455,12 @@ export const UnifiedDatePicker: React.FC = () => {
               type="button"
               onClick={() => handleDayClick(cellDate)}
               className={cx(
-                'day-cell relative z-10 size-8 flex items-center justify-center rounded-lg text-[13px] font-medium outline-none transition-colors border-0',
-                !isInRange && 'hover:bg-[#f5f4ef] text-[var(--ink)] cursor-pointer',
-                isInRange && !isEdge && 'text-[#1c1b18] cursor-pointer',
-                isEdge && '!bg-[#2563eb] !text-white font-semibold cursor-pointer shadow-sm',
-                isStart && !isSingleDay && 'rounded-s-lg',
-                isEnd && !isSingleDay && 'rounded-e-lg',
+                'day-cell relative z-10 size-[40px] flex items-center justify-center rounded-[10px] text-[14px] font-medium font-sans tabular-nums outline-none transition-colors border-0 cursor-pointer',
+                isEdge
+                  ? 'bg-[#2563eb] text-white font-semibold shadow-sm'
+                  : isInRange
+                  ? 'text-[#1c1b18] hover:bg-[#bfdbfe]'
+                  : 'text-[var(--ink)] hover:bg-[#f5f4ef]',
                 'focus-visible:ring-2 focus-visible:ring-[#2563eb]'
               )}
             >
@@ -414,10 +471,30 @@ export const UnifiedDatePicker: React.FC = () => {
       );
     }
 
+    // Pad with empty suffix cells to ensure exactly 6 rows (42 cells total)
+    const totalFilled = dayOfWeek + totalDays;
+    const suffixCount = 42 - totalFilled;
+    for (let i = 0; i < suffixCount; i++) {
+      cells.push(<div key={`empty-post-${i}`} className="size-[40px]" />);
+    }
+
     return cells;
   };
 
-  const monthsTitle = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthsTitle = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
 
   return (
     <div className="relative inline-block" id="unified-date-picker">
@@ -447,17 +524,22 @@ export const UnifiedDatePicker: React.FC = () => {
           aria-label="Date range calendar"
           className={cx(
             'boardui-calendar-popover absolute z-[130] bg-white border border-[var(--line)] shadow-[var(--shadow-dropdown)] outline-none',
-            // Desktop: anchored popover
-            'top-full mt-2 right-0 rounded-2xl flex flex-col overflow-hidden',
-            // Mobile: bottom sheet
-            'max-[640px]:!fixed max-[640px]:!inset-x-0 max-[640px]:!bottom-0 max-[640px]:!top-auto max-[640px]:!mt-0 max-[640px]:!rounded-t-2xl max-[640px]:!rounded-b-none max-[640px]:max-h-[90vh]'
+            isMobile
+              ? '!fixed !inset-x-0 !bottom-0 !top-auto !mt-0 !rounded-t-2xl !rounded-b-none !w-full max-h-[90dvh] overflow-y-auto'
+              : 'top-full mt-2 right-0 rounded-2xl flex flex-col overflow-hidden'
           )}
-          style={{
-            maxWidth: 'calc(100vw - 24px)',
-          }}
+          style={
+            isMobile
+              ? undefined
+              : {
+                  width: isDesktop ? '880px' : '640px',
+                  maxHeight: 'min(640px, calc(100dvh - 96px))',
+                  maxWidth: 'calc(100vw - 24px)',
+                }
+          }
         >
-          {/* Top Row inside Popover: Segmented Control [ Single | Range ] */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line)] bg-[#fbfbfa]">
+          {/* Header (56px high, Single/Range segmented control left, close button right) */}
+          <div className="h-[56px] px-4 border-b border-[var(--line)] bg-[#fbfbfa] flex items-center justify-between shrink-0">
             <BoardSegmentedControl
               id="cal-mode-seg"
               value={draftMode}
@@ -479,137 +561,178 @@ export const UnifiedDatePicker: React.FC = () => {
               ]}
               aria-label="Calendar mode selection"
             />
-            <button
-              type="button"
-              className="size-8 rounded-lg flex items-center justify-center text-[var(--mute)] hover:bg-[#f5f4ef] border-0 cursor-pointer"
-              onClick={handleCancel}
-              aria-label="Close"
-            >
-              <RiCloseLine className="size-5" />
-            </button>
+            <CloseButton size="md" aria-label="Close calendar" onClick={handleCancel} />
           </div>
 
-          {/* Main Body: Presets Left Column + Center Calendar + Optional Time Sidebar */}
-          <div className="flex flex-row max-[640px]:flex-col flex-1 overflow-hidden">
-            {/* Left Column: Problem 3B Presets */}
+          {/* If tablet/mobile (< 1100px): Presets as horizontal chip row above calendar */}
+          {!isDesktop && (
             <div
-              className={cx(
-                'w-[168px] shrink-0 border-r border-[var(--line)] p-2 flex flex-col overflow-y-auto',
-                'max-[640px]:w-full max-[640px]:border-r-0 max-[640px]:border-b max-[640px]:flex-row max-[640px]:overflow-x-auto max-[640px]:gap-1'
-              )}
-              style={{ maxHeight: '360px' }}
+              className="px-4 py-2 border-b border-[var(--line)] flex flex-row items-center gap-1.5 overflow-x-auto shrink-0 bg-[#fbfbfa]"
               role="listbox"
               aria-label="Date presets"
             >
-              <div className="hidden sm:block px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--mute)] select-none">
-                QUICK SELECT
-              </div>
-              {PRESETS.map((preset, idx) => {
+              {PRESETS.map((preset) => {
                 const isSelected = activePresetId === preset.id;
-                const isAllTime = preset.id === 'allTime';
                 return (
-                  <React.Fragment key={preset.id}>
-                    {isAllTime && (
-                      <div className="my-1.5 border-t border-[var(--line)] max-[640px]:hidden" />
+                  <button
+                    key={preset.id}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => handlePresetSelect(preset)}
+                    className={cx(
+                      'h-[30px] px-3 rounded-full text-[12px] font-medium shrink-0 cursor-pointer select-none transition-colors border-0 outline-none whitespace-nowrap',
+                      isSelected
+                        ? 'bg-[#dbeafe] text-[#1d4ed8] font-semibold'
+                        : 'bg-white text-[var(--ink)] hover:bg-[#f5f4ef] border border-[var(--line)]',
+                      'focus-visible:ring-2 focus-visible:ring-[#2563eb]'
                     )}
-                    <div
-                      role="option"
-                      aria-selected={isSelected}
-                      tabIndex={0}
-                      onClick={() => handlePresetSelect(preset)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handlePresetSelect(preset);
-                        }
-                      }}
-                      className={cx(
-                        'preset-row h-[36px] px-3 rounded-lg text-[13px] flex items-center cursor-pointer select-none transition-colors border-0 outline-none',
-                        'max-[640px]:shrink-0 max-[640px]:rounded-full max-[640px]:px-3 max-[640px]:h-[30px]',
-                        isSelected
-                          ? 'bg-[#dbeafe] text-[#1d4ed8] font-semibold'
-                          : 'bg-transparent text-[var(--ink)] hover:bg-[#f5f4ef] font-medium',
-                        'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563eb]'
-                      )}
-                    >
-                      {preset.label}
-                    </div>
-                  </React.Fragment>
+                  >
+                    {preset.label}
+                  </button>
                 );
               })}
             </div>
+          )}
 
-            {/* Center: Dual-Month Calendar */}
-            <div className="flex flex-col p-4 overflow-y-auto">
-              <div className="flex items-center gap-6 max-[640px]:flex-col">
-                {/* Month 1 */}
-                <div className="w-[240px]">
-                  <div className="flex items-center justify-between pb-3">
+          {/* Main Body: Presets Left Column (Desktop) + Calendar Area + Optional Time Sidebar */}
+          <div className="flex flex-row flex-1 overflow-hidden min-h-0">
+            {/* Desktop Left Column: 176px Preset Column */}
+            {isDesktop && (
+              <div
+                className="w-[176px] shrink-0 border-r border-[var(--line)] p-3 flex flex-col overflow-y-auto"
+                style={{ maxHeight: '420px' }}
+                role="listbox"
+                aria-label="Date presets"
+              >
+                <div className="px-3 mb-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--mute)] select-none">
+                  QUICK SELECT
+                </div>
+                <div className="flex flex-col gap-[2px]">
+                  {PRESETS.map((preset) => {
+                    const isSelected = activePresetId === preset.id;
+                    const isAllTime = preset.id === 'allTime';
+                    return (
+                      <React.Fragment key={preset.id}>
+                        {isAllTime && (
+                          <div className="my-2 border-t border-[var(--line)]" />
+                        )}
+                        <div
+                          role="option"
+                          aria-selected={isSelected}
+                          tabIndex={0}
+                          onClick={() => handlePresetSelect(preset)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handlePresetSelect(preset);
+                            }
+                          }}
+                          className={cx(
+                            'preset-row h-[36px] px-3 rounded-lg text-[13px] flex items-center cursor-pointer select-none transition-colors border-0 outline-none',
+                            isSelected
+                              ? 'bg-[#dbeafe] text-[#1d4ed8] font-semibold'
+                              : 'bg-transparent text-[var(--ink)] hover:bg-[#f5f4ef] font-medium',
+                            'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2563eb]'
+                          )}
+                        >
+                          {preset.label}
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Calendar Area: 16px padding around */}
+            <div className="flex-1 p-4 overflow-y-auto flex items-start justify-center">
+              <div className="flex items-start gap-6">
+                {/* Month 1: 308px */}
+                <div className="w-[308px] shrink-0 flex flex-col">
+                  {/* Month 1 Header: 40px row */}
+                  <div className="h-[40px] relative flex items-center justify-center mb-1">
                     <button
                       type="button"
-                      className="size-7 rounded-lg flex items-center justify-center text-[var(--mute)] hover:bg-[#f5f4ef] border-0 cursor-pointer"
+                      className="size-8 absolute left-0 top-1 rounded-lg flex items-center justify-center text-[var(--mute)] hover:bg-[#f5f4ef] border-0 cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring"
                       onClick={() => setVisibleMonth(visibleMonth.subtract({ months: 1 }))}
                       aria-label="Previous month"
                     >
                       <RiArrowLeftSLine className="size-5" />
                     </button>
-                    <span className="font-semibold text-[13.5px] text-[var(--ink)]">
+                    <span className="font-semibold text-[14px] text-[var(--ink)] select-none">
                       {monthsTitle[visibleMonth.month - 1]} {visibleMonth.year}
                     </span>
-                    <div className="size-7 sm:invisible">
+                    {/* If single month view, show Next button here */}
+                    {!isDesktop && (
                       <button
                         type="button"
-                        className="size-7 rounded-lg flex items-center justify-center text-[var(--mute)] hover:bg-[#f5f4ef] border-0 cursor-pointer sm:hidden"
+                        className="size-8 absolute right-0 top-1 rounded-lg flex items-center justify-center text-[var(--mute)] hover:bg-[#f5f4ef] border-0 cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring"
+                        onClick={() => setVisibleMonth(visibleMonth.add({ months: 1 }))}
+                        aria-label="Next month"
+                      >
+                        <RiArrowRightSLine className="size-5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Weekday Row: 32px high */}
+                  <div className="h-[32px] grid grid-cols-7 gap-x-[2px] items-center text-center text-[11px] font-semibold text-[var(--mute)] uppercase tracking-wider select-none mb-1">
+                    <span>MO</span>
+                    <span>TU</span>
+                    <span>WE</span>
+                    <span>TH</span>
+                    <span>FR</span>
+                    <span>SA</span>
+                    <span>SU</span>
+                  </div>
+
+                  {/* Day Grid: 40x40 cells with 2px gap, always 6 rows (42 cells) */}
+                  <div className="grid grid-cols-7 gap-[2px] justify-items-center">
+                    {renderMonthDays(visibleMonth)}
+                  </div>
+                </div>
+
+                {/* 1px Vertical Divider between months on Desktop */}
+                {isDesktop && (
+                  <div className="w-[1px] bg-[var(--line)] self-stretch" />
+                )}
+
+                {/* Month 2: 308px (Desktop dual view only) */}
+                {isDesktop && (
+                  <div className="w-[308px] shrink-0 flex flex-col">
+                    {/* Month 2 Header: IDENTICAL 40px row */}
+                    <div className="h-[40px] relative flex items-center justify-center mb-1">
+                      <span className="font-semibold text-[14px] text-[var(--ink)] select-none">
+                        {monthsTitle[nextMonth.month - 1]} {nextMonth.year}
+                      </span>
+                      <button
+                        type="button"
+                        className="size-8 absolute right-0 top-1 rounded-lg flex items-center justify-center text-[var(--mute)] hover:bg-[#f5f4ef] border-0 cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring"
                         onClick={() => setVisibleMonth(visibleMonth.add({ months: 1 }))}
                         aria-label="Next month"
                       >
                         <RiArrowRightSLine className="size-5" />
                       </button>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-7 gap-y-1 text-center text-[11px] font-semibold text-[var(--mute)] pb-1">
-                    <span>MO</span>
-                    <span>TU</span>
-                    <span>WE</span>
-                    <span>TH</span>
-                    <span>FR</span>
-                    <span>SA</span>
-                    <span>SU</span>
-                  </div>
-                  <div className="grid grid-cols-7 gap-y-1 justify-items-center">
-                    {renderMonthDays(visibleMonth)}
-                  </div>
-                </div>
 
-                {/* Month 2 (Desktop dual view) */}
-                <div className="w-[240px] hidden sm:block">
-                  <div className="flex items-center justify-between pb-3">
-                    <div className="size-7 invisible" />
-                    <span className="font-semibold text-[13.5px] text-[var(--ink)]">
-                      {monthsTitle[nextMonth.month - 1]} {nextMonth.year}
-                    </span>
-                    <button
-                      type="button"
-                      className="size-7 rounded-lg flex items-center justify-center text-[var(--mute)] hover:bg-[#f5f4ef] border-0 cursor-pointer"
-                      onClick={() => setVisibleMonth(visibleMonth.add({ months: 1 }))}
-                      aria-label="Next month"
-                    >
-                      <RiArrowRightSLine className="size-5" />
-                    </button>
+                    {/* Weekday Row: 32px high */}
+                    <div className="h-[32px] grid grid-cols-7 gap-x-[2px] items-center text-center text-[11px] font-semibold text-[var(--mute)] uppercase tracking-wider select-none mb-1">
+                      <span>MO</span>
+                      <span>TU</span>
+                      <span>WE</span>
+                      <span>TH</span>
+                      <span>FR</span>
+                      <span>SA</span>
+                      <span>SU</span>
+                    </div>
+
+                    {/* Day Grid: 40x40 cells with 2px gap, always 6 rows (42 cells) */}
+                    <div className="grid grid-cols-7 gap-[2px] justify-items-center">
+                      {renderMonthDays(nextMonth)}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-7 gap-y-1 text-center text-[11px] font-semibold text-[var(--mute)] pb-1">
-                    <span>MO</span>
-                    <span>TU</span>
-                    <span>WE</span>
-                    <span>TH</span>
-                    <span>FR</span>
-                    <span>SA</span>
-                    <span>SU</span>
-                  </div>
-                  <div className="grid grid-cols-7 gap-y-1 justify-items-center">
-                    {renderMonthDays(nextMonth)}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -691,9 +814,17 @@ export const UnifiedDatePicker: React.FC = () => {
             )}
           </div>
 
-          {/* Footer: Date inputs + Days Selected pill + Add Time Toggle + Cancel / Apply */}
-          <div className="flex items-center justify-between p-3.5 border-t border-[var(--line)] bg-[#fbfbfa] flex-wrap gap-3">
-            <div className="flex items-center gap-2">
+          {/* Footer: 72px high, padding 16px 20px, top border 1px */}
+          <div
+            className={cx(
+              'border-t border-[var(--line)] bg-[#fbfbfa] shrink-0',
+              isMobile
+                ? 'p-4 flex flex-col gap-3'
+                : 'h-[72px] px-5 py-4 flex items-center justify-between flex-nowrap'
+            )}
+          >
+            {/* Left: start input - end input (>= 132px wide), pill */}
+            <div className={cx('flex items-center gap-2.5', isMobile && 'w-full justify-between')}>
               <input
                 type="text"
                 value={startInputText}
@@ -702,12 +833,15 @@ export const UnifiedDatePicker: React.FC = () => {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleDateInputCommit(true, startInputText);
                 }}
-                className="w-[96px] h-[34px] px-2 rounded-lg border border-[var(--line)] bg-white text-[12.5px] font-mono text-[var(--ink)] text-center outline-none focus:border-[#2563eb]"
+                className={cx(
+                  'h-[38px] px-2.5 rounded-lg border border-[var(--line)] bg-white text-[14px] font-mono tabular-nums text-center text-[var(--ink)] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]',
+                  isMobile ? 'flex-1 min-w-[110px]' : 'w-[136px] min-w-[132px]'
+                )}
                 placeholder="DD/MM/YYYY"
               />
               {draftMode === 'range' && (
                 <>
-                  <span className="text-[var(--mute)] font-mono text-[12px]">-</span>
+                  <span className="text-[var(--mute)] font-mono text-[14px] select-none">-</span>
                   <input
                     type="text"
                     value={endInputText}
@@ -716,44 +850,57 @@ export const UnifiedDatePicker: React.FC = () => {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleDateInputCommit(false, endInputText);
                     }}
-                    className="w-[96px] h-[34px] px-2 rounded-lg border border-[var(--line)] bg-white text-[12.5px] font-mono text-[var(--ink)] text-center outline-none focus:border-[#2563eb]"
+                    className={cx(
+                      'h-[38px] px-2.5 rounded-lg border border-[var(--line)] bg-white text-[14px] font-mono tabular-nums text-center text-[var(--ink)] outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]',
+                      isMobile ? 'flex-1 min-w-[110px]' : 'w-[136px] min-w-[132px]'
+                    )}
                     placeholder="DD/MM/YYYY"
                   />
                 </>
               )}
-              <span className="pill nu text-[11.5px] font-mono">
+              <span className="pill nu text-[12px] font-mono whitespace-nowrap">
                 {draftDaysCount} {draftDaysCount === 1 ? 'day' : 'days'} selected
               </span>
             </div>
 
-            <div className="flex items-center gap-2 ml-auto">
+            {/* Right: Add Time toggle + Cancel + Apply */}
+            <div
+              className={cx(
+                'flex items-center gap-2 shrink-0',
+                isMobile && 'w-full justify-end'
+              )}
+            >
               {draftMode === 'single' && (
                 <button
                   type="button"
                   onClick={() => setAddTimeOpen(!addTimeOpen)}
                   className={cx(
-                    'h-[34px] px-2.5 rounded-lg border border-[var(--line)] text-[12.5px] font-medium flex items-center gap-1.5 cursor-pointer outline-none transition-colors',
-                    addTimeOpen ? 'bg-[#dbeafe] text-[#1d4ed8] border-[#93c5fd]' : 'bg-white text-[var(--ink)] hover:bg-[#f5f4ef]'
+                    'h-[36px] px-3 rounded-lg border border-[var(--line)] text-[13px] font-medium flex items-center gap-1.5 cursor-pointer outline-none transition-colors',
+                    addTimeOpen
+                      ? 'bg-[#dbeafe] text-[#1d4ed8] border-[#93c5fd]'
+                      : 'bg-white text-[var(--ink)] hover:bg-[#f5f4ef]'
                   )}
                 >
                   <RiTimeLine className="size-4" />
                   <span>{addTimeOpen ? 'Time Added' : 'Add Time'}</span>
                 </button>
               )}
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="medium"
                 onClick={handleCancel}
-                className="h-[34px] px-3 rounded-lg text-[13px] font-medium text-[var(--mute)] hover:bg-[#f0efeb] border-0 cursor-pointer transition-colors"
+                className={cx(isMobile && 'flex-1')}
               >
                 Cancel
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
+                size="medium"
                 onClick={handleApply}
-                className="h-[34px] px-4 rounded-lg bg-[#161616] text-white text-[13px] font-medium hover:bg-[#2e2e2e] border-0 cursor-pointer transition-colors shadow-sm"
+                className={cx(isMobile && 'flex-1')}
               >
                 Apply
-              </button>
+              </Button>
             </div>
           </div>
         </div>
