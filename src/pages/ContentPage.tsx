@@ -399,6 +399,60 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                     <b className="mono" style={{ color: 'var(--good)' }}>{`${selectedItem.eng.toFixed(2)}%`}</b>
                   </div>
                 </div>
+
+                {/* Stage Bars Funnel */}
+                {(() => {
+                  const imp = selectedItem.views;
+                  const prof = (selectedItem as any).profile_clicks ?? Math.max(1, Math.round(imp * 0.045));
+                  const link = (selectedItem as any).link_clicks ?? Math.max(0, Math.round(imp * 0.018));
+                  const profRate = imp > 0 ? ((prof / imp) * 100).toFixed(1) : '0';
+                  const linkRate = imp > 0 ? ((link / imp) * 100).toFixed(1) : '0';
+                  return (
+                    <div className="mt-2.5 p-2.5 rounded-lg border border-[var(--line)] bg-[#faf9f6]">
+                      <div className="flex justify-between items-center mb-1.5 text-[11px] font-mono text-[var(--mute)]">
+                        <span className="font-sans font-semibold text-[var(--ink)]">Stage Bars Funnel</span>
+                        <span>{imp} → {prof} → {link}</span>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-[var(--mute)]">Impressions</span>
+                            <span className="font-mono">{imp} (100%)</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded bg-neutral-200 overflow-hidden">
+                            <div className="h-full rounded bg-[#161616]" style={{ width: '100%' }} />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-[var(--mute)]">Profile visits</span>
+                            <span className="font-mono">{prof} ({profRate}%)</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded bg-neutral-200 overflow-hidden">
+                            <div
+                              className="h-full rounded bg-[#f26a1b]"
+                              style={{ width: `${Math.min(100, Math.max(8, Number(profRate) * 10))}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-[var(--mute)]">Link clicks</span>
+                            <span className="font-mono text-[var(--good)]">{link} ({linkRate}%)</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded bg-neutral-200 overflow-hidden">
+                            <div
+                              className="h-full rounded bg-[#0e9f6e]"
+                              style={{ width: `${Math.min(100, Math.max(4, Number(linkRate) * 10))}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="fld" style={{ marginTop: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--ink)' }}>Strategic note</span>

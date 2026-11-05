@@ -75,6 +75,10 @@ export function dots(P: number[], Rr: number[], L: (string | number)[]) {
   return `<svg viewBox="0 0 ${W} ${H}" width="100%">${s}</svg>`;
 }
 
+export function line(p: [number, number][]) {
+  return p.map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt[0]},${pt[1]}`).join(' ');
+}
+
 export function smooth(p: [number, number][]) {
   let d = `M${p[0][0]},${p[0][1]}`;
   for (let i = 0; i < p.length - 1; i++) {

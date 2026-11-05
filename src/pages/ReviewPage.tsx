@@ -23,14 +23,22 @@ export const ReviewPage: React.FC = () => {
   const tweenPosts = useCountTween(posts);
   const tweenReps = useCountTween(reps);
 
-  const by = TOPICS.map((t) => {
-    const a = CT.filter((c) => c.topic === t);
+  const topicRankings = TOPICS.map((topic) => {
+    const items = CT.filter((c) => c.topic === topic);
+    const n = items.length;
+    const avgViews = n > 0 ? sum(items, (c) => c.views) / n : 0;
+    const avgEng = n > 0 ? sum(items, (c) => c.eng) / n : 0;
     return {
-      t,
-      v: a.length > 0 ? sum(a, (c) => c.views) / a.length : 0,
-      e: a.length > 0 ? sum(a, (c) => c.eng) / a.length : 0,
+      topic,
+      n,
+      avgViews,
+      avgEng,
+      isLowSample: n < 5,
     };
-  }).sort((a, b) => b.e - a.e)[0] || { t: 'None', v: 0, e: 0 };
+  }).sort((a, b) => b.avgEng - a.avgEng);
+
+  const maxEng = Math.max(...topicRankings.map((t) => t.avgEng), 1);
+  const by = topicRankings[0] || { topic: 'None', avgViews: 0, avgEng: 0, n: 0, isLowSample: false };
 
   const small = posts < 30;
   const pace = tp + tr > 0 ? Math.round(((posts + reps) / (tp + tr)) * 100) : 0;
@@ -164,7 +172,49 @@ export const ReviewPage: React.FC = () => {
 
       <div style={{ marginBottom: '14px' }}>
         <Tray icon="review" title="Key recorded observation">
-          {'Content tagged '}<b>{`“${by.t}”`}</b>{` has the highest engagement in the library: `}<span className="mono">{Math.round(by.v)}</span>{` avg impressions, `}<span className="mono">{`${by.e.toFixed(2)}%`}</span>{` engagement. Computed over all ${CT.length} items, not just this range.`}
+          {'Content tagged '}<b>{`“${by.topic}”`}</b>{` has the highest engagement in the library: `}<span className="mono">{Math.round(by.avgViews)}</span>{` avg impressions, `}<span className="mono">{`${by.avgEng.toFixed(2)}%`}</span>{` engagement (n=${by.n}). Computed over all ${CT.length} items, not just this range.`}
+        </Tray>
+      </div>
+
+      <div style={{ marginBottom: '14px' }}>
+        <Tray icon="trend" title="Topic resonance ranking (Bar List)">
+          <p className="sub" style={{ margin: '0 0 12px' }}>
+            Average engagement rate across all {CT.length} content items by topic
+          </p>
+          <div className="flex flex-col gap-2.5">
+            {topicRankings.map((item) => (
+              <div
+                key={item.topic}
+                className={`flex flex-col gap-1 ${item.isLowSample ? 'opacity-50' : ''}`}
+              >
+                <div className="flex justify-between items-center text-[13px]">
+                  <div className="flex items-center gap-2">
+                    <b className="font-medium text-[var(--ink)]">#{item.topic}</b>
+                    <span className="text-[11.5px] font-mono text-[var(--mute)]">
+                      n={item.n}
+                    </span>
+                    {item.isLowSample && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-500 font-mono">
+                        low sample
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-mono text-[13px] font-medium text-[var(--ink)]">
+                    {item.avgEng.toFixed(2)}%
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded bg-neutral-100 overflow-hidden">
+                  <div
+                    className="h-full rounded"
+                    style={{
+                      width: `${Math.round((item.avgEng / maxEng) * 100)}%`,
+                      backgroundColor: item.isLowSample ? '#bdb9ae' : '#f26a1b',
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </Tray>
       </div>
 

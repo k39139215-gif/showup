@@ -321,33 +321,48 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
       {/* Heatmap & Recent Content */}
       <div className="g g2 transition-opacity duration-200">
         <Tray icon="today" title="Activity history">
-          <p className="sub" style={{ margin: 0 }}>
-            {`Last 12 weeks · ${cells.filter((c) => acts(c) > 0).length} active days`}
+          <p className="sub" style={{ margin: '0 0 10px' }}>
+            {`Last 12 weeks · ${cells.filter((c) => acts(c) > 0).length} active days · selected range highlighted`}
           </p>
-          <div className="heat">
-            {Array.from({ length: lead }, (_, i) => (
-              <i key={`lead-${i}`} className="x"></i>
-            ))}
-            {cells.map((c, i) => {
-              const globalIdx = N - 84 + i;
-              const a = pick(c, 'p', plat) + pick(c, 'r', plat);
-              const cl = lvl(a);
-              const isInRange =
-                globalIdx >= dateSlice.startIndex && globalIdx <= dateSlice.endIndex;
+          <div className="flex gap-2 items-start mt-2">
+            <div className="flex flex-col justify-between text-[9px] font-mono text-[var(--mute)] h-[90px] pt-4 select-none shrink-0">
+              <span>Mon</span>
+              <span>Wed</span>
+              <span>Fri</span>
+            </div>
+            <div className="flex-1 overflow-x-auto">
+              <div className="flex justify-between text-[10px] font-mono text-[var(--mute)] px-1 mb-1 select-none">
+                <span>Aug</span>
+                <span>Sep</span>
+                <span>Oct</span>
+                <span>Nov</span>
+              </div>
+              <div className="heat" style={{ marginTop: 0 }}>
+                {Array.from({ length: lead }, (_, i) => (
+                  <i key={`lead-${i}`} className="x"></i>
+                ))}
+                {cells.map((c, i) => {
+                  const globalIdx = N - 84 + i;
+                  const a = pick(c, 'p', plat) + pick(c, 'r', plat);
+                  const cl = lvl(a);
+                  const isInRange =
+                    globalIdx >= dateSlice.startIndex && globalIdx <= dateSlice.endIndex;
 
-              return (
-                <TooltipTrigger key={`cell-${i}`} delay={50}>
-                  <i
-                    className={cl}
-                    style={!isInRange ? { opacity: 0.22, filter: 'grayscale(0.8)' } : undefined}
-                    tabIndex={0}
-                    role="img"
-                    aria-label={`${fmtD(dayAt(globalIdx))}: ${a} actions`}
-                  ></i>
-                  <Tooltip size="sm">{`${fmtD(dayAt(globalIdx))}: ${a} actions`}</Tooltip>
-                </TooltipTrigger>
-              );
-            })}
+                  return (
+                    <TooltipTrigger key={`cell-${i}`} delay={50}>
+                      <i
+                        className={cl}
+                        style={!isInRange ? { opacity: 0.22, filter: 'grayscale(0.8)' } : undefined}
+                        tabIndex={0}
+                        role="img"
+                        aria-label={`${fmtD(dayAt(globalIdx))}: ${a} actions`}
+                      ></i>
+                      <Tooltip size="sm">{`${fmtD(dayAt(globalIdx))}: ${a} actions`}</Tooltip>
+                    </TooltipTrigger>
+                  );
+                })}
+              </div>
+            </div>
           </div>
           <div className="hl">
             Less<i></i>

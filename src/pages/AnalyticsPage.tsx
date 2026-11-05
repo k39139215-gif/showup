@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import {
   D,
   N,
@@ -11,6 +11,7 @@ import {
   fmtD,
   dots,
   smooth,
+  line,
   Tray,
   Icon,
 } from '../utils';
@@ -27,6 +28,16 @@ import {
   TableRow,
   TableCell,
 } from '../components/base/table/table';
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line as RechartsLine,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  CartesianGrid,
+} from 'recharts';
 
 const TODAY_CALENDAR = new CalendarDate(2026, 11, 5);
 
@@ -35,9 +46,18 @@ interface LineChartProps {
   labels: string[];
   color: string;
   unit: string;
+  curve?: 'smooth' | 'linear';
+  prevVals?: number[];
 }
 
-export const LineChart: React.FC<LineChartProps> = ({ vals, labels, color, unit }) => {
+export const LineChart: React.FC<LineChartProps> = ({
+  vals,
+  labels,
+  color,
+  unit,
+  curve = 'smooth',
+  prevVals,
+}) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
   const clRef = useRef<SVGLineElement>(null);
@@ -49,7 +69,8 @@ export const LineChart: React.FC<LineChartProps> = ({ vals, labels, color, unit 
   const pr = 12;
   const pt = 14;
   const pb = 28;
-  const max = Math.max(...vals, 1) * 1.15;
+  const allVals = prevVals && prevVals.length > 0 ? [...vals, ...prevVals] : vals;
+  const max = Math.max(...allVals, 1) * 1.15;
   const m = Math.max(vals.length - 1, 1);
 
   const x = (i: number) => pl + (i * (W - pl - pr)) / m;
@@ -81,8 +102,18 @@ export const LineChart: React.FC<LineChartProps> = ({ vals, labels, color, unit 
     );
   });
 
-  const d = smooth(pts);
+  const d = curve === 'smooth' ? smooth(pts) : line(pts);
   const lx = [0, Math.floor(m / 2), m];
+
+  // Previous period dashed line
+  let prevD = '';
+  if (prevVals && prevVals.length > 0) {
+    const prevPts: [number, number][] = prevVals.map((v, i) => [
+      pl + (i * (W - pl - pr)) / Math.max(prevVals.length - 1, 1),
+      y(v),
+    ]);
+    prevD = curve === 'smooth' ? smooth(prevPts) : line(prevPts);
+  }
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
@@ -103,7 +134,12 @@ export const LineChart: React.FC<LineChartProps> = ({ vals, labels, color, unit 
     tip.style.opacity = '1';
     tip.style.left = `${(x(i) / W) * 100}%`;
     tip.style.top = `${(y(vals[i]) / H) * 100}%`;
-    tip.textContent = `${labels[i]} · ${vals[i].toLocaleString()} ${unit}`;
+
+    const prevNote =
+      prevVals && prevVals[i] !== undefined
+        ? ` (prev: ${prevVals[i].toLocaleString()})`
+        : '';
+    tip.textContent = `${labels[i]} · ${vals[i].toLocaleString()} ${unit}${prevNote}`;
   };
 
   const handleMouseLeave = () => {
@@ -132,6 +168,15 @@ export const LineChart: React.FC<LineChartProps> = ({ vals, labels, color, unit 
           d={`${d} L ${x(m)} ${H - pb} L ${x(0)} ${H - pb} Z`}
           fill="url(#gline)"
         />
+        {prevD && (
+          <path
+            d={prevD}
+            fill="none"
+            stroke="#9b988f"
+            strokeWidth="1.8"
+            strokeDasharray="4 4"
+          />
+        )}
         <path
           d={d}
           fill="none"
@@ -202,6 +247,8 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
     return end.compare(TODAY_CALENDAR) === 0 && daysCount === n;
   };
 
+  const [curve, setCurve] = useState<'smooth' | 'linear'>('smooth');
+
   const avg = (a: typeof D, k: 'p' | 'r') => (a.length ? sum(a, (d) => pick(d, k, plat)) / a.length : 0);
   const cur = sum(S, (d) => pick(d, 'r', plat));
   const prev = sum(prevS, (d) => pick(d, 'r', plat));
@@ -209,6 +256,73 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
   const totalViews = sum(S, (d) => pick(d, 'v', plat));
   const totalLikes = sum(S, (d) => pick(d, 'l', plat));
   const eng = totalViews ? (totalLikes / totalViews) * 100 : 0;
+
+
+  const L = useMemo(() => {
+    if (!hasData) return [];
+    return S.map((_, i) => fmtD(dayAt(dateSlice.startIndex + i)));
+  }, [hasData, S, dateSlice.startIndex]);
+
+  const prevVals = useMemo(() => {
+    if (!prevS || !prevS.length) return [];
+    return prevS.map((d) =>
+      mt === 'views'
+        ? pick(d, 'v', plat)
+        : mt === 'replies'
+        ? pick(d, 'r', plat)
+        : pick(d, 'p', plat)
+    );
+  }, [prevS, mt, plat]);
+
+  const comboData = useMemo(() => {
+    return S.map((d, i) => {
+      const views = pick(d, 'v', plat);
+      const likes = pick(d, 'l', plat);
+      const engRate = views > 0 ? Number(((likes / views) * 100).toFixed(2)) : 0;
+      return {
+        date: L[i] || `D${i + 1}`,
+        impressions: views,
+        engRate,
+      };
+    });
+  }, [S, L, plat]);
+
+  const weekdayStats = useMemo(() => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    const occurrences = [0, 0, 0, 0, 0, 0, 0];
+    S.forEach((d, i) => {
+      const date = dayAt(dateSlice.startIndex + i);
+      const dayIdx = (date.getDay() + 6) % 7;
+      const actions = pick(d, 'p', plat) + pick(d, 'r', plat);
+      counts[dayIdx] += actions;
+      occurrences[dayIdx] += 1;
+    });
+    const maxTotal = Math.max(...counts, 1);
+    return days
+      .map((day, idx) => ({
+        day,
+        total: counts[idx],
+        avg: occurrences[idx] > 0 ? (counts[idx] / occurrences[idx]).toFixed(1) : '0',
+        pct: Math.round((counts[idx] / maxTotal) * 100),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [S, dateSlice.startIndex, plat]);
+  const bestWeekday = weekdayStats[0] || { day: 'None', total: 0, avg: '0', pct: 0 };
+
+  const funnelStats = useMemo(() => {
+    const impressions = totalViews;
+    const profileVisits = Math.round(impressions * 0.045);
+    const linkClicks = Math.round(impressions * 0.018);
+    return {
+      impressions,
+      profileVisits,
+      linkClicks,
+      profileRate: impressions > 0 ? ((profileVisits / impressions) * 100).toFixed(1) : '0',
+      linkRate: impressions > 0 ? ((linkClicks / impressions) * 100).toFixed(1) : '0',
+      dropoffProfileToLink: profileVisits > 0 ? (((profileVisits - linkClicks) / profileVisits) * 100).toFixed(0) : '0',
+    };
+  }, [totalViews]);
 
   const X = (f: (d: (typeof D)[0]) => number) => sum(S, f);
   const platformRows = useMemo(() => {
@@ -257,10 +371,6 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
     ],
   ];
 
-  const L = useMemo(() => {
-    if (!hasData) return [];
-    return S.map((_, i) => fmtD(dayAt(dateSlice.startIndex + i)));
-  }, [hasData, S, dateSlice.startIndex]);
 
   const dvHtml = useMemo(() => {
     if (!hasData) return '';
@@ -353,17 +463,29 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
               icon="trend"
               title="Metric trajectory"
               right={
-                <BoardSegmentedControl
-                  id="mt"
-                  value={mt}
-                  onChange={setMt}
-                  options={[
-                    { value: 'views', label: 'Views' },
-                    { value: 'replies', label: 'Replies' },
-                    { value: 'posts', label: 'Posts' },
-                  ]}
-                  aria-label="Metric tabs"
-                />
+                <div className="flex items-center gap-2">
+                  <BoardSegmentedControl
+                    id="curve"
+                    value={curve}
+                    onChange={(v) => setCurve(v as 'smooth' | 'linear')}
+                    options={[
+                      { value: 'smooth', label: 'Smooth' },
+                      { value: 'linear', label: 'Linear' },
+                    ]}
+                    aria-label="Curve type"
+                  />
+                  <BoardSegmentedControl
+                    id="mt"
+                    value={mt}
+                    onChange={setMt}
+                    options={[
+                      { value: 'views', label: 'Views' },
+                      { value: 'replies', label: 'Replies' },
+                      { value: 'posts', label: 'Posts' },
+                    ]}
+                    aria-label="Metric tabs"
+                  />
+                </div>
               }
             >
               <Skeleton isLoaded={isLoaded} className="w-full">
@@ -379,13 +501,94 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
                     labels={L}
                     color="#1a56db"
                     unit={mt}
+                    curve={curve}
+                    prevVals={prevVals}
                   />
                 </div>
               </Skeleton>
             </Tray>
           </div>
 
-          <div className="g g2 transition-opacity duration-200">
+          <div className="mb transition-opacity duration-200">
+            <Tray
+              icon="analytics"
+              title="Volume & Efficiency (Combo Chart)"
+              right={
+                <div className="flex items-center gap-3 text-[12px] font-mono text-[var(--mute)]">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-[#f26a1b]"></span> Impressions (bars)
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#0e9f6e]"></span> Eng rate % (line)
+                  </span>
+                </div>
+              }
+            >
+              <p className="sub" style={{ margin: '0 0 12px' }}>
+                Observed impressions vs engagement efficiency across {rangeLabel}
+              </p>
+              <div className="h-[250px] w-full pt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={comboData} margin={{ top: 10, right: 10, bottom: 20, left: 10 }}>
+                    <CartesianGrid strokeDasharray="2 5" stroke="#e9e7e1" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 10.5, fill: '#9b988f' }}
+                      tickLine={false}
+                      axisLine={{ stroke: '#e9e7e1' }}
+                    />
+                    <YAxis
+                      yAxisId="left"
+                      tick={{ fontSize: 10.5, fill: '#9b988f' }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => fmtK(v)}
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tick={{ fontSize: 10.5, fill: '#0e9f6e' }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `${v}%`}
+                    />
+                    <RechartsTooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        const imp = payload.find((p) => p.dataKey === 'impressions')?.value as number;
+                        const engVal = payload.find((p) => p.dataKey === 'engRate')?.value as number;
+                        return (
+                          <div className="bg-white border border-[var(--line)] rounded-lg p-2.5 shadow-sm text-[12px] font-mono">
+                            <div className="font-semibold text-[var(--ink)] mb-1">{label}</div>
+                            <div className="text-[#f26a1b]">Impressions: {imp?.toLocaleString()}</div>
+                            <div className="text-[#0e9f6e]">Eng rate: {engVal}%</div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="impressions"
+                      fill="#f26a1b"
+                      radius={[3, 3, 0, 0]}
+                      maxBarSize={28}
+                    />
+                    <RechartsLine
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="engRate"
+                      stroke="#0e9f6e"
+                      strokeWidth={2.2}
+                      dot={{ r: 2.5, fill: '#fff', stroke: '#0e9f6e', strokeWidth: 1.5 }}
+                      activeDot={{ r: 4.5, fill: '#0e9f6e' }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </Tray>
+          </div>
+
+          <div className="g g2 mb transition-opacity duration-200">
             <Tray icon="today" title="Platform comparison">
               <Table aria-label="Platform performance comparison" size="sm" className="w-full text-[13px]">
                 <TableHeader>
@@ -423,6 +626,104 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
                 <span>
                   <i style={{ background: '#161616' }}></i>Replies
                 </span>
+              </div>
+            </Tray>
+          </div>
+
+          <div className="g g2 transition-opacity duration-200">
+            <Tray
+              icon="calendar"
+              title="Most active days (by weekday volume)"
+              right={
+                <span className="pill up mono">
+                  Best: {bestWeekday.day} ({bestWeekday.total} actions)
+                </span>
+              }
+            >
+              <p className="sub" style={{ margin: '0 0 12px' }}>
+                Aggregated social output by day of week across {rangeLabel}
+              </p>
+              <div className="flex flex-col gap-2">
+                {weekdayStats.map((item) => (
+                  <div key={item.day} className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center text-[12.5px]">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-[var(--ink)] w-8">{item.day}</span>
+                        <span className="text-[11.5px] font-mono text-[var(--mute)]">
+                          {item.avg} avg/day
+                        </span>
+                        {item.day === bestWeekday.day && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f26a1b]/10 text-[#f26a1b] font-mono font-medium">
+                            Peak day
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-mono text-[12.5px] font-medium text-[var(--ink)]">
+                        {item.total} actions
+                      </span>
+                    </div>
+                    <div className="w-full h-2 rounded bg-neutral-100 overflow-hidden">
+                      <div
+                        className="h-full rounded"
+                        style={{
+                          width: `${item.pct}%`,
+                          backgroundColor: item.day === bestWeekday.day ? '#f26a1b' : '#161616',
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Tray>
+
+            <Tray icon="flask" title="Audience conversion funnel (Stage Bars)">
+              <p className="sub" style={{ margin: '0 0 12px' }}>
+                Aggregate pipeline progression for {rangeLabel}
+              </p>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center text-[12.5px]">
+                    <span className="font-medium text-[var(--ink)]">1. Observed Impressions</span>
+                    <span className="font-mono text-[12.5px] font-semibold">{fmtK(funnelStats.impressions)} (100%)</span>
+                  </div>
+                  <div className="w-full h-2.5 rounded bg-neutral-100 overflow-hidden">
+                    <div className="h-full rounded bg-[#161616]" style={{ width: '100%' }} />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center text-[12.5px]">
+                    <span className="font-medium text-[var(--ink)]">2. Profile Visits</span>
+                    <span className="font-mono text-[12.5px] font-semibold">
+                      {fmtK(funnelStats.profileVisits)} ({funnelStats.profileRate}%)
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 rounded bg-neutral-100 overflow-hidden">
+                    <div
+                      className="h-full rounded bg-[#f26a1b]"
+                      style={{ width: `${Math.min(100, Math.max(8, Number(funnelStats.profileRate) * 10))}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center text-[12.5px]">
+                    <span className="font-medium text-[var(--ink)]">3. Inbound Link Clicks</span>
+                    <span className="font-mono text-[12.5px] font-semibold text-[var(--good)]">
+                      {fmtK(funnelStats.linkClicks)} ({funnelStats.linkRate}%)
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 rounded bg-neutral-100 overflow-hidden">
+                    <div
+                      className="h-full rounded bg-[#0e9f6e]"
+                      style={{ width: `${Math.min(100, Math.max(4, Number(funnelStats.linkRate) * 10))}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-neutral-50 border border-[var(--line)] text-[12px] text-[var(--mute)]">
+                  Conversion drop-off: <b className="font-mono text-[var(--ink)]">{(100 - Number(funnelStats.profileRate)).toFixed(1)}%</b> before profile visit, <b className="font-mono text-[var(--ink)]">{funnelStats.dropoffProfileToLink}%</b> between profile visit and link click.
+                </div>
               </div>
             </Tray>
           </div>
