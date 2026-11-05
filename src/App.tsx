@@ -7,6 +7,7 @@ import { ContentPage } from './pages/ContentPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
+import { TopBarDateControl } from './components/TopBarDateControl';
 
 const TITLES: Record<string, string> = {
   today: 'Today',
@@ -235,14 +236,7 @@ export const App: React.FC = () => {
               Verasett &nbsp;›&nbsp; <b id="crumb">{activePageTitle}</b>
             </div>
             <div className="tools">
-              <span className="chip mono" id="dt">
-                {TODAY.toLocaleDateString('en-US', {
-                  weekday: 'short',
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                })}
-              </span>
+              <TopBarDateControl />
               <div className="seg" id="ps">
                 <button
                   data-p="all"

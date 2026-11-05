@@ -9,8 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@internationalized/date": "^3.12.1",
+    "@remixicon/react": "^4.9.0",
+    "motion": "^12.42.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-aria-components": "^1.17.0",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",

@@ -1,0 +1,55 @@
+:root {
+  --color-border-button-default: #e3e0d8;
+  --color-border-button-hover: #cfcbc2;
+  --color-border-button-active: #1c1b18;
+  --color-border-focus-ring: #2563eb;
+
+  --color-background-primary-default: #ffffff;
+  --color-background-primary-hover: #faf9f6;
+  --color-background-primary-disabled: #f5f4ef;
+  --color-background-secondary-default: #ffffff;
+  --color-background-secondary-hover: #f5f4ef;
+  --color-background-tertiary-default: #ebe8e1;
+
+  --color-text-primary: #1c1b18;
+  --color-text-secondary: #7c7971;
+  --color-text-tertiary: #b3afa6;
+
+  --color-foreground-icon-primary: #1c1b18;
+  --color-foreground-full: #ffffff;
+  --color-dropdown-item-hover-background: #f5f4ef;
+
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+
+  --color-accent-500: #2563eb;
+  --color-accent-600: #1d4ed8;
+
+  --shadow-dropdown: 0 10px 30px -5px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --radius-2lg: 10px;
+}
+
+.text-body-medium { font-size: 13px; font-weight: 500; line-height: 1.4; }
+.rounded-2lg { border-radius: 10px; }
+.shadow-dropdown { box-shadow: var(--shadow-dropdown); }
+.shadow-xs { box-shadow: var(--shadow-xs); }
+
+.bg-background-primary-default { background-color: var(--color-background-primary-default); }
+.bg-background-secondary-default { background-color: var(--color-background-secondary-default); }
+.bg-background-tertiary-default { background-color: var(--color-background-tertiary-default); }
+.bg-background-secondary-hover:hover { background-color: var(--color-background-secondary-hover); }
+.bg-dropdown-item-hover-background { background-color: var(--color-dropdown-item-hover-background); }
+.bg-date-range-background { background-color: #dbeafe; }
+.bg-date-range-edge-background { background-color: #3b82f6; }
+.bg-accent-500 { background-color: #2563eb; }
+
+.border-border-button-default { border-color: var(--color-border-button-default); }
+.border-border-button-hover:hover { border-color: var(--color-border-button-hover); }
+
+.text-text-primary { color: var(--color-text-primary); }
+.text-text-secondary { color: var(--color-text-secondary); }
+.text-text-tertiary { color: var(--color-text-tertiary); }
+.text-foreground-icon-primary { color: var(--color-foreground-icon-primary); }
