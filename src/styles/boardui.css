@@ -53,3 +53,37 @@
 .text-text-secondary { color: var(--color-text-secondary); }
 .text-text-tertiary { color: var(--color-text-tertiary); }
 .text-foreground-icon-primary { color: var(--color-foreground-icon-primary); }
+
+/* Problem 3B: Preset row styling matching calendar day tokens */
+.preset-row {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.preset-row:hover {
+  background-color: var(--tray);
+}
+.preset-row[aria-selected="true"] {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+.preset-row:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+.preset-row:active {
+  background-color: #e2e8f0;
+}

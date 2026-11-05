@@ -1,35 +1,39 @@
 import React from 'react';
 import {
-  D,
-  N,
   G,
   CT,
   TOPICS,
-  dayAt,
   acts,
   sum,
 } from '../data';
-import { fmtD, Icon, Segs, Tray } from '../utils';
+import { Icon, Segs, Tray, useCountTween } from '../utils';
+import { useDateRangeStore } from '../store/dateStore';
 
 export const ReviewPage: React.FC = () => {
-  const W = D.slice(-7);
+  const { dateSlice, daysCount, rangeLabel, hasData } = useDateRangeStore();
+  const W = dateSlice.days;
+
   const posts = sum(W, (d) => d.xp + d.lp);
   const reps = sum(W, (d) => d.xr + d.lr);
-  const tp = (G.xp + G.lp) * 7;
-  const tr = (G.xr + G.lr) * 7;
+  const tp = (G.xp + G.lp) * Math.max(1, daysCount);
+  const tr = (G.xr + G.lr) * Math.max(1, daysCount);
   const act = W.filter((d) => acts(d) > 0).length;
+
+  const tweenPosts = useCountTween(posts);
+  const tweenReps = useCountTween(reps);
 
   const by = TOPICS.map((t) => {
     const a = CT.filter((c) => c.topic === t);
     return {
       t,
-      v: sum(a, (c) => c.views) / a.length,
-      e: sum(a, (c) => c.eng) / a.length,
+      v: a.length > 0 ? sum(a, (c) => c.views) / a.length : 0,
+      e: a.length > 0 ? sum(a, (c) => c.eng) / a.length : 0,
     };
-  }).sort((a, b) => b.e - a.e)[0];
+  }).sort((a, b) => b.e - a.e)[0] || { t: 'None', v: 0, e: 0 };
 
   const small = posts < 30;
-  const pace = Math.round(((posts + reps) / (tp + tr)) * 100);
+  const pace = tp + tr > 0 ? Math.round(((posts + reps) / (tp + tr)) * 100) : 0;
+  const tweenPace = useCountTween(pace);
 
   const ex = [
     [
@@ -62,71 +66,94 @@ export const ReviewPage: React.FC = () => {
           <h1>Weekly executive review</h1>
           <p className="sub">Evidence-grounded observations and growth experiments</p>
         </div>
-        <span className="chip mono">{`${fmtD(dayAt(N - 7))} – ${fmtD(dayAt(N - 1))} · N=${posts} posts, N=${reps} replies`}</span>
+        <span className="chip mono">{`${rangeLabel} · N=${tweenPosts} posts, N=${tweenReps} replies`}</span>
       </div>
 
-      <div className="banner">
-        <Icon name="info" size={18} />
-        <div>
-          <b style={{ fontWeight: 600 }}>
-            {small ? 'Directional signal only' : 'Adequate sample'}
-          </b>
-          <div style={{ fontSize: '13px', marginTop: '2px' }}>
-            {small
-              ? `${posts} posts in a week is too few for statistical claims. Treat the patterns below as hypotheses to test, not findings.`
-              : 'Sample is large enough for directional pattern recognition.'}
-          </div>
+      {!hasData ? (
+        <div
+          className="empty-state-card"
+          style={{
+            padding: '48px 24px',
+            textAlign: 'center',
+            background: '#fff',
+            border: '1px solid var(--line)',
+            borderRadius: '14px',
+            margin: '20px 0',
+          }}
+        >
+          <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ink)' }}>
+            No activity for this period
+          </h3>
+          <p style={{ fontSize: '13px', color: 'var(--sub)', marginTop: '6px' }}>
+            Selected range ({rangeLabel}) has no recorded social actions or posts. Choose a date range within the active 90-day dataset to view executive review metrics.
+          </p>
         </div>
-      </div>
-
-      <div className="g g2 mb" style={{ gridTemplateColumns: '1fr 1fr' }}>
-        <Tray
-          icon="target"
-          title="Weekly activity vs target"
-          right={
-            <span className={`pill ${pace >= 85 ? 'up' : 'wn'}`}>{`${pace}% goal pacing`}</span>
-          }
-        >
-          <div className="gr">
-            <div className="r">
-              <span>Original posts published</span>
-              <span className="mono muted">{`${posts} / ${tp}`}</span>
+      ) : (
+        <>
+          <div className="banner">
+            <Icon name="info" size={18} />
+            <div>
+              <b style={{ fontWeight: 600 }}>
+                {small ? 'Directional signal only' : 'Adequate sample'}
+              </b>
+              <div style={{ fontSize: '13px', marginTop: '2px' }}>
+                {small
+                  ? `${posts} posts in ${daysCount} ${daysCount === 1 ? 'day' : 'days'} is too few for statistical claims. Treat the patterns below as hypotheses to test, not findings.`
+                  : `Sample of ${posts} posts across ${daysCount} ${daysCount === 1 ? 'day' : 'days'} is large enough for directional pattern recognition.`}
+              </div>
             </div>
-            <Segs f={posts / tp} c="#f26a1b" />
           </div>
-          <div className="gr">
-            <div className="r">
-              <span>Outbound conversations & replies</span>
-              <span className="mono muted">{`${reps} / ${tr}`}</span>
-            </div>
-            <Segs f={reps / tr} c="#161616" />
-          </div>
-          <p className="muted mono" style={{ fontSize: '12px', marginTop: '16px' }}>
-            {`Active days this week: ${act} of 7 · targets derived from daily goals`}
-          </p>
-        </Tray>
 
-        <Tray
-          icon="trend"
-          title="Consistency vs volume"
-          right={<span className="pill wn">Under-leveraged</span>}
-        >
-          <b style={{ fontWeight: 600 }}>
-            {act === 7 ? 'Seven for seven' : 'Consistency baseline established'}
-          </b>
-          <p className="muted" style={{ marginTop: '6px', lineHeight: 1.5 }}>
-            {`Activity is spread across ${posts} posts. High-intent conversations in key accounts (NetSuite and SAP AR) are the place to go deeper.`}
-          </p>
-          {'\n      '}
-          <p className="muted" style={{ fontSize: '12.5px', marginTop: '14px' }}>
-            Rule: steady daily consistency compounds more than burst posting.
-          </p>
-        </Tray>
-      </div>
+          <div className="g g2 mb" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <Tray
+              icon="target"
+              title="Activity vs target"
+              right={
+                <span className={`pill ${pace >= 85 ? 'up' : 'wn'}`}>{`${tweenPace}% goal pacing`}</span>
+              }
+            >
+              <div className="gr">
+                <div className="r">
+                  <span>Original posts published</span>
+                  <span className="mono muted">{`${tweenPosts} / ${tp}`}</span>
+                </div>
+                <Segs f={tp > 0 ? posts / tp : 0} c="#f26a1b" />
+              </div>
+              <div className="gr">
+                <div className="r">
+                  <span>Outbound conversations & replies</span>
+                  <span className="mono muted">{`${tweenReps} / ${tr}`}</span>
+                </div>
+                <Segs f={tr > 0 ? reps / tr : 0} c="#161616" />
+              </div>
+              <p className="muted mono" style={{ fontSize: '12px', marginTop: '16px' }}>
+                {`Active days in period: ${act} of ${daysCount} · targets derived from daily goals`}
+              </p>
+            </Tray>
+
+            <Tray
+              icon="trend"
+              title="Consistency vs volume"
+              right={<span className="pill wn">Under-leveraged</span>}
+            >
+              <b style={{ fontWeight: 600 }}>
+                {act === daysCount ? 'All days active' : 'Consistency baseline established'}
+              </b>
+              <p className="muted" style={{ marginTop: '6px', lineHeight: 1.5 }}>
+                {`Activity is spread across ${posts} posts. High-intent conversations in key accounts (NetSuite and SAP AR) are the place to go deeper.`}
+              </p>
+              {'\n      '}
+              <p className="muted" style={{ fontSize: '12.5px', marginTop: '14px' }}>
+                Rule: steady daily consistency compounds more than burst posting.
+              </p>
+            </Tray>
+          </div>
+        </>
+      )}
 
       <div style={{ marginBottom: '14px' }}>
         <Tray icon="review" title="Key recorded observation">
-          {'Content tagged '}<b>{`“${by.t}”`}</b>{` has the highest engagement in the library: `}<span className="mono">{Math.round(by.v)}</span>{` avg impressions, `}<span className="mono">{`${by.e.toFixed(2)}%`}</span>{` engagement. Computed over all ${CT.length} items, not just this week.`}
+          {'Content tagged '}<b>{`“${by.t}”`}</b>{` has the highest engagement in the library: `}<span className="mono">{Math.round(by.v)}</span>{` avg impressions, `}<span className="mono">{`${by.e.toFixed(2)}%`}</span>{` engagement. Computed over all ${CT.length} items, not just this range.`}
         </Tray>
       </div>
 

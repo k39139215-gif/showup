@@ -124,6 +124,7 @@ export interface DropdownPopoverProps
   className?: string;
   /** Classes on the inner dialog (the flex column), e.g. gap between groups. */
   dialogClassName?: string;
+  style?: React.CSSProperties;
   children: ReactNode;
 }
 
@@ -134,6 +135,7 @@ export function DropdownPopover({
   crossOffset,
   className,
   dialogClassName,
+  style,
   children,
 }: DropdownPopoverProps) {
   const context = useContext(DropdownContext);
@@ -144,6 +146,7 @@ export function DropdownPopover({
       placement={placement}
       offset={offset}
       crossOffset={crossOffset}
+      style={style}
       className={cx(
         MENU_POPOVER_WIDTH,
         MENU_POPOVER_SURFACE,

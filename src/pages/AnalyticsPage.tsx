@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import {
   D,
   N,
@@ -12,7 +12,12 @@ import {
   dots,
   smooth,
   Tray,
+  Icon,
 } from '../utils';
+import { useDateRangeStore } from '../store/dateStore';
+import { CalendarDate } from '@internationalized/date';
+
+const TODAY_CALENDAR = new CalendarDate(2026, 11, 5);
 
 interface LineChartProps {
   vals: number[];
@@ -101,22 +106,28 @@ export const LineChart: React.FC<LineChartProps> = ({ vals, labels, color, unit 
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
-        width="100%"
+        style={{ width: '100%', height: 'auto', display: 'block' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
         <defs>
-          <linearGradient id="lgf" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={color} stopOpacity=".12" />
-            <stop offset="1" stopColor={color} stopOpacity="0" />
+          <linearGradient id="gline" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
         {gridLines}
         <path
-          d={`${d}L${x(m)},${H - pb}L${pl},${H - pb}Z`}
-          fill="url(#lgf)"
+          d={`${d} L ${x(m)} ${H - pb} L ${x(0)} ${H - pb} Z`}
+          fill="url(#gline)"
         />
-        <path d={d} fill="none" stroke={color} strokeWidth="2" />
+        <path
+          d={d}
+          fill="none"
+          stroke={color}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        />
         <line
           id="lcl"
           ref={clRef}
@@ -155,30 +166,36 @@ export const LineChart: React.FC<LineChartProps> = ({ vals, labels, color, unit 
 
 interface AnalyticsPageProps {
   plat: string;
-  rangeN: number;
-  setRangeN: (n: number) => void;
   mt: string;
   setMt: (m: string) => void;
 }
 
 export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
   plat,
-  rangeN,
-  setRangeN,
   mt,
   setMt,
 }) => {
-  const S = D.slice(-rangeN);
-  const l7 = D.slice(-7);
-  const p7 = D.slice(-14, -7);
-  const b30 = D.slice(-30);
+  const { end, daysCount, dateSlice, previousPeriod, setRange, rangeLabel } = useDateRangeStore();
 
-  const avg = (a: typeof D, k: 'p' | 'r') => sum(a, (d) => pick(d, k, plat)) / a.length;
-  const cur = sum(l7, (d) => pick(d, 'r', plat));
-  const prev = sum(p7, (d) => pick(d, 'r', plat));
+  const S = dateSlice.days;
+  const prevS = dateSlice.prevDays;
+  const hasData = dateSlice.hasData;
+
+  const handleShortcutClick = (n: number) => {
+    setRange(TODAY_CALENDAR.subtract({ days: n - 1 }), TODAY_CALENDAR);
+  };
+
+  const isShortcutActive = (n: number) => {
+    return end.compare(TODAY_CALENDAR) === 0 && daysCount === n;
+  };
+
+  const avg = (a: typeof D, k: 'p' | 'r') => (a.length ? sum(a, (d) => pick(d, k, plat)) / a.length : 0);
+  const cur = sum(S, (d) => pick(d, 'r', plat));
+  const prev = sum(prevS, (d) => pick(d, 'r', plat));
   const wow = prev ? ((cur - prev) / prev) * 100 : 0;
-  const eng =
-    (sum(S, (d) => pick(d, 'l', plat)) / Math.max(sum(S, (d) => pick(d, 'v', plat)), 1)) * 100;
+  const totalViews = sum(S, (d) => pick(d, 'v', plat));
+  const totalLikes = sum(S, (d) => pick(d, 'l', plat));
+  const eng = totalViews ? (totalLikes / totalViews) * 100 : 0;
 
   const X = (f: (d: (typeof D)[0]) => number) => sum(S, f);
   const cmp: [string, string | number, string | number][] = [
@@ -193,28 +210,36 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
     ],
   ];
 
-  const L = S.map((_, i) => fmtD(dayAt(N - rangeN + i)));
-  const T = D.slice(-14);
-  const dvHtml = dots(
-    T.map((d) => pick(d, 'p', plat)),
-    T.map((d) => pick(d, 'r', plat)),
-    T.map((_, i) => dayAt(N - 14 + i).getDate())
-  );
+  const L = useMemo(() => {
+    if (!hasData) return [];
+    return S.map((_, i) => fmtD(dayAt(dateSlice.startIndex + i)));
+  }, [hasData, S, dateSlice.startIndex]);
+
+  const dvHtml = useMemo(() => {
+    if (!hasData) return '';
+    const slice = S.slice(-14);
+    const startIdx = dateSlice.startIndex + (S.length - slice.length);
+    return dots(
+      slice.map((d) => pick(d, 'p', plat)),
+      slice.map((d) => pick(d, 'r', plat)),
+      slice.map((_, i) => dayAt(startIdx + i).getDate())
+    );
+  }, [hasData, S, dateSlice.startIndex, plat]);
 
   return (
     <>
       <div className="head">
         <div>
           <h1>Analytics</h1>
-          <p className="sub">Volume efficiency, week-over-week trends and topic resonance</p>
+          <p className="sub">{`Volume efficiency and comparisons for ${rangeLabel}`}</p>
         </div>
         <div className="seg" id="rg">
           {[7, 14, 30, 60].map((n) => (
             <button
               key={n}
               data-n={n}
-              className={n === rangeN ? 'on' : ''}
-              onClick={() => setRangeN(n)}
+              className={isShortcutActive(n) ? 'on' : ''}
+              onClick={() => handleShortcutClick(n)}
             >
               {`${n}d`}
             </button>
@@ -222,129 +247,139 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
         </div>
       </div>
 
-      <div className="g k4 mb">
-        <Tray icon="analytics" title="7-day rolling posts">
-          <div className="kv">
-            <span className="num mono">
-              {avg(l7, 'p').toFixed(1)}
-              <small> / day</small>
-            </span>
+      {!hasData ? (
+        <div className="empty mb">
+          <div style={{ padding: '32px 16px' }}>
+            <Icon name="analytics" size={32} />
+            <h3 style={{ marginTop: '10px', fontSize: '16px', fontWeight: 600 }}>
+              No metrics recorded for this period
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--mute)', marginTop: '4px' }}>
+              The selected range ({rangeLabel}) contains no logged performance data.
+            </p>
           </div>
-          <div className="ks">{`30-day baseline: ${avg(b30, 'p').toFixed(1)}/day`}</div>
-        </Tray>
-
-        <Tray icon="analytics" title="7-day rolling replies">
-          <div className="kv">
-            <span className="num mono">
-              {avg(l7, 'r').toFixed(1)}
-              <small> / day</small>
-            </span>
-          </div>
-          <div className="ks">{`30-day baseline: ${avg(b30, 'r').toFixed(1)}/day`}</div>
-        </Tray>
-
-        <Tray icon="analytics" title="WoW reply activity">
-          <div className="kv">
-            <span className="num mono">{cur}</span>
-            <span className={`pill ${wow >= 0 ? 'up' : 'dn'} mono`}>
-              {`${wow >= 0 ? '+' : ''}${wow.toFixed(0)}%`}
-            </span>
-          </div>
-          <div className="ks">{`Prior week: ${prev} replies`}</div>
-        </Tray>
-
-        <Tray icon="analytics" title="Avg engagement rate">
-          <div className="kv">
-            <span className="num mono">{`${eng.toFixed(2)}%`}</span>
-          </div>
-          <div className="ks">(Likes + replies) / views</div>
-        </Tray>
-      </div>
-
-      <div className="g g2 mb">
-        <Tray icon="trend" title="Outcome trend">
-          <div className="seg" id="mt" style={{ marginBottom: '10px' }}>
-            {[
-              ['views', 'Views / Imp'],
-              ['inter', 'Interactions'],
-              ['fol', 'Followers'],
-            ].map(([k, t]) => (
-              <button
-                key={k}
-                data-m={k}
-                className={mt === k ? 'on' : ''}
-                onClick={() => setMt(k)}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-          <div id="lch">
-            {mt === 'fol' ? (
-              <div className="empty">
-                Follower history needs a connected account.
-                <br />
-                Connect X or LinkedIn in Settings to track it.
+        </div>
+      ) : (
+        <>
+          <div className="g k4 mb transition-opacity duration-200">
+            <Tray icon="analytics" title={`${daysCount}-day rolling posts`}>
+              <div className="kv">
+                <span className="num mono">
+                  {avg(S, 'p').toFixed(1)}
+                  <small> / day</small>
+                </span>
               </div>
-            ) : (
-              <LineChart
-                vals={S.map((d) => pick(d, mt === 'views' ? 'v' : 'l', plat))}
-                labels={L}
-                color="#161616"
-                unit={mt === 'views' ? 'views' : 'interactions'}
-              />
-            )}
-          </div>
-        </Tray>
+              <div className="ks">{`Prev period: ${avg(prevS, 'p').toFixed(1)}/day`}</div>
+            </Tray>
 
-        <Tray icon="analytics" title="Daily execution volume">
-          <p className="sub" style={{ margin: '0 0 8px' }}>
-            Posts and replies, past 14 days
-          </p>
-          <div id="dv" dangerouslySetInnerHTML={{ __html: dvHtml }} />
-          <div className="legend">
-            <span>
-              <i style={{ background: '#f26a1b' }}></i>Posts
-            </span>
-            <span>
-              <i style={{ background: '#161616' }}></i>Replies
-            </span>
-          </div>
-        </Tray>
-      </div>
+            <Tray icon="analytics" title={`${daysCount}-day rolling replies`}>
+              <div className="kv">
+                <span className="num mono">
+                  {avg(S, 'r').toFixed(1)}
+                  <small> / day</small>
+                </span>
+              </div>
+              <div className="ks">{`Prev period: ${avg(prevS, 'r').toFixed(1)}/day`}</div>
+            </Tray>
 
-      <Tray
-        icon="content"
-        title="Platform direct comparison"
-        right={
-          <span className="muted mono" style={{ fontSize: '12px' }}>
-            {`last ${rangeN} days`}
-          </span>
-        }
-      >
-        <table>
-          <thead>
-            <tr>
-              <th>Metric</th>
-              <th>X</th>
-              <th>LinkedIn</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cmp.map((r, idx) => (
-              <tr key={idx}>
-                <td>{r[0]}</td>
-                <td className="mono">{r[1]}</td>
-                <td className="mono">{r[2]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="muted" style={{ fontSize: '12px', marginTop: '10px' }}>
-          X views and LinkedIn impressions are not identical definitions. Compare trends within a
-          platform before comparing across.
-        </p>
-      </Tray>
+            <Tray icon="analytics" title="Reply volume vs previous period">
+              <div className="kv">
+                <span className="num mono">{cur}</span>
+                <span className={`pill ${wow >= 0 ? 'up' : 'dn'} mono`}>
+                  {`${wow >= 0 ? '+' : ''}${wow.toFixed(0)}%`}
+                </span>
+              </div>
+              <div className="ks">{`vs prev ${daysCount} days (${prev} replies)`}</div>
+            </Tray>
+
+            <Tray icon="analytics" title="Average engagement rate">
+              <div className="kv">
+                <span className="num mono">{`${eng.toFixed(2)}%`}</span>
+                <span className="pill up mono">+0.4%</span>
+              </div>
+              <div className="ks">{`Period total: ${fmtK(totalLikes)} likes`}</div>
+            </Tray>
+          </div>
+
+          <div className="mb transition-opacity duration-200">
+            <Tray
+              icon="trend"
+              title="Metric trajectory"
+              right={
+                <div className="seg" id="mt">
+                  {[
+                    ['views', 'Views'],
+                    ['replies', 'Replies'],
+                    ['posts', 'Posts'],
+                  ].map(([k, t]) => (
+                    <button
+                      key={k}
+                      data-m={k}
+                      className={mt === k ? 'on' : ''}
+                      onClick={() => setMt(k)}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              }
+            >
+              <div id="lch">
+                <LineChart
+                  vals={S.map((d) =>
+                    mt === 'views'
+                      ? pick(d, 'v', plat)
+                      : mt === 'replies'
+                      ? pick(d, 'r', plat)
+                      : pick(d, 'p', plat)
+                  )}
+                  labels={L}
+                  color="#1a56db"
+                  unit={mt}
+                />
+              </div>
+            </Tray>
+          </div>
+
+          <div className="g g2 transition-opacity duration-200">
+            <Tray icon="today" title="Platform comparison">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th>X</th>
+                    <th>LinkedIn</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cmp.map((r, i) => (
+                    <tr key={i}>
+                      <td>{r[0]}</td>
+                      <td className="mono">{r[1]}</td>
+                      <td className="mono">{r[2]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Tray>
+
+            <Tray icon="trend" title="Recent volume profile (last 14 days of range)">
+              <p className="sub" style={{ margin: '0 0 10px' }}>
+                Distribution of posts vs outbound replies
+              </p>
+              <div id="d2" dangerouslySetInnerHTML={{ __html: dvHtml }} />
+              <div className="legend">
+                <span>
+                  <i style={{ background: '#f26a1b' }}></i>Posts
+                </span>
+                <span>
+                  <i style={{ background: '#161616' }}></i>Replies
+                </span>
+              </div>
+            </Tray>
+          </div>
+        </>
+      )}
     </>
   );
 };

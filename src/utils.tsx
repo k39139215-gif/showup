@@ -16,7 +16,9 @@ export const I: Record<string, string> = {
   flask: '<path d="M9 3h6M10 3v6L4 19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2l-6-10V3"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
   trend: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
-  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  menu: '<path d="M3 12h18M3 6h18M3 18h18"/>',
+  close: '<path d="M18 6L6 18M6 6l12 12"/>'
 };
 
 export const ic = (n: string, s: number = 16) =>
@@ -110,3 +112,40 @@ export const Tray: React.FC<{
     <div className="tb">{children}</div>
   </div>
 );
+
+export function useCountTween(target: number, duration = 200): number {
+  const [val, setVal] = React.useState(target);
+  const prevRef = React.useRef(target);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setVal(target);
+      prevRef.current = target;
+      return;
+    }
+    const startVal = prevRef.current;
+    const diff = target - startVal;
+    if (diff === 0) return;
+
+    const startTime = performance.now();
+    let frameId: number;
+
+    const animate = (time: number) => {
+      const elapsed = time - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      setVal(Math.round(startVal + diff * ease));
+
+      if (progress < 1) {
+        frameId = requestAnimationFrame(animate);
+      } else {
+        prevRef.current = target;
+      }
+    };
+
+    frameId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frameId);
+  }, [target, duration]);
+
+  return val;
+}

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { G, Goals } from '../data';
 import { badge, Tray } from '../utils';
+import { SelectDropdown } from '../components/base/dropdown/SelectDropdown';
+import { TIMEZONE_OPTIONS } from '../utils/dateMath';
 
 interface SettingsPageProps {
   tab: string;
@@ -17,6 +19,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
 
   const [formG, setFormG] = useState<Goals>({ ...G });
   const [saveMsg, setSaveMsg] = useState('');
+  const [timezone, setTimezone] = useState('Asia/Kolkata');
 
   const handleSave = () => {
     G.xp = Math.max(0, formG.xp || 0);
@@ -103,9 +106,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                 ))}
                 <label className="fld">
                   Timezone
-                  <select defaultValue="Asia/Kolkata">
-                    <option>Asia/Kolkata</option>
-                  </select>
+                  <SelectDropdown
+                    id="s_tz"
+                    value={timezone}
+                    onChange={setTimezone}
+                    options={TIMEZONE_OPTIONS}
+                    aria-label="Timezone"
+                  />
                 </label>
               </div>
               <div

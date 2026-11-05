@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { CT, TOPICS } from '../data';
-import { fmtD, Icon, badge, Tray } from '../utils';
+import { Icon, Tray } from '../utils';
+import { useDateRangeStore } from '../store/dateStore';
+import { SelectDropdown, SelectOption } from '../components/base/dropdown/SelectDropdown';
 
 interface ContentPageProps {
   plat: string;
@@ -14,6 +16,19 @@ interface ContentPageProps {
   setSel: (id: number) => void;
 }
 
+const CONTENT_TYPE_OPTIONS: SelectOption[] = [
+  { value: 'all', label: 'All content types' },
+  { value: 'original post', label: 'Original post' },
+  { value: 'reply external', label: 'Reply external' },
+  { value: 'reply own_conversation', label: 'Reply own conversation' },
+];
+
+const CONTENT_SORT_OPTIONS: SelectOption[] = [
+  { value: 'recent', label: 'Sort: most recent' },
+  { value: 'views', label: 'Sort: views' },
+  { value: 'eng', label: 'Sort: engagement' },
+];
+
 export const ContentPage: React.FC<ContentPageProps> = ({
   plat,
   cq,
@@ -25,32 +40,52 @@ export const ContentPage: React.FC<ContentPageProps> = ({
   sel,
   setSel,
 }) => {
-  // force update when note changes
-  const [, setTick] = useState(0);
+  const { isDateInCurrentRange, rangeLabel } = useDateRangeStore();
 
-  const L = CT.filter(
-    (c) =>
-      (plat === 'all' || c.p === plat) &&
-      (ct === 'all' || c.type === ct) &&
-      (c.text + c.topic).toLowerCase().includes(cq.toLowerCase())
-  );
+  // Filter content items by current date range
+  const inRangeCT = useMemo(() => {
+    return CT.filter((c) => isDateInCurrentRange(c.date));
+  }, [isDateInCurrentRange]);
 
-  L.sort((a, b) =>
-    cs === 'views'
-      ? b.views - a.views
-      : cs === 'eng'
-      ? b.eng - a.eng
-      : b.date.getTime() - a.date.getTime() || a.id - b.id
-  );
+  const L = useMemo(() => {
+    const filtered = inRangeCT.filter(
+      (c) =>
+        (plat === 'all' || c.p === plat) &&
+        (ct === 'all' || c.type === ct) &&
+        (c.text + c.topic).toLowerCase().includes(cq.toLowerCase())
+    );
 
-  const selectedItem = CT.find((x) => x.id === sel);
+    filtered.sort((a, b) =>
+      cs === 'views'
+        ? b.views - a.views
+        : cs === 'eng'
+        ? b.eng - a.eng
+        : b.date.getTime() - a.date.getTime() || a.id - b.id
+    );
+
+    return filtered;
+  }, [inRangeCT, plat, ct, cq, cs]);
+
+  // Selected item resets if it falls outside current range
+  useEffect(() => {
+    const isCurrentSelInRange = inRangeCT.some((x) => x.id === sel);
+    if (!isCurrentSelInRange) {
+      if (L.length > 0) {
+        setSel(L[0].id);
+      } else {
+        setSel(-1);
+      }
+    }
+  }, [inRangeCT, sel, L, setSel]);
+
+  const selectedItem = inRangeCT.find((x) => x.id === sel);
 
   return (
     <>
       <div className="head">
         <div>
           <h1>Content & reply library</h1>
-          <p className="sub">Searchable master-detail library with performance breakdown</p>
+          <p className="sub">{`Searchable master-detail library for ${rangeLabel}`}</p>
         </div>
       </div>
 
@@ -72,30 +107,32 @@ export const ContentPage: React.FC<ContentPageProps> = ({
             </svg>
             <input
               id="cq"
+              type="text"
               placeholder="Search keywords (NetSuite, lockbox, unapplied cash)…"
               value={cq}
               onChange={(e) => setCq(e.target.value)}
             />
           </div>
-          <select id="ct" value={ct} onChange={(e) => setCt(e.target.value)}>
-            {['all', 'original post', 'reply external', 'reply own_conversation'].map((t) => (
-              <option key={t} value={t}>
-                {t === 'all' ? 'All content types' : t}
-              </option>
-            ))}
-          </select>
-          <select id="cs" value={cs} onChange={(e) => setCs(e.target.value)}>
-            {[
-              ['recent', 'Sort: most recent'],
-              ['views', 'Sort: views'],
-              ['eng', 'Sort: engagement'],
-            ].map(([k, t]) => (
-              <option key={k} value={k}>
-                {t}
-              </option>
-            ))}
-          </select>
+
+          <SelectDropdown
+            id="ct"
+            value={ct}
+            onChange={(val) => setCt(val)}
+            options={CONTENT_TYPE_OPTIONS}
+            fixedWidth="w-[190px]"
+            aria-label="Filter by content type"
+          />
+
+          <SelectDropdown
+            id="cs"
+            value={cs}
+            onChange={(val) => setCs(val)}
+            options={CONTENT_SORT_OPTIONS}
+            fixedWidth="w-[170px]"
+            aria-label="Sort content by"
+          />
         </div>
+
         <div className="fbar" style={{ marginTop: '12px' }}>
           {TOPICS.map((t) => (
             <span
@@ -106,81 +143,113 @@ export const ContentPage: React.FC<ContentPageProps> = ({
               onClick={() => setCq(t)}
             >{`#${t}`}</span>
           ))}
+          {cq && (
+            <span
+              className="pill or"
+              style={{ cursor: 'pointer' }}
+              onClick={() => setCq('')}
+            >
+              Clear filter ✕
+            </span>
+          )}
         </div>
-      </Tray>
 
-      <div className="g cm" style={{ marginTop: '14px' }}>
-        <div>
-          <div className="muted" id="cc" style={{ marginBottom: '8px', fontSize: '13px' }}>{`Showing ${L.length} of ${CT.length} items`}</div>
-          <div className="clist" id="clist">
-            {L.length > 0 ? (
-              L.map((c) => (
+        <div className="muted" style={{ fontSize: '12.5px', margin: '14px 0 10px' }}>
+          {`Showing ${L.length} of ${inRangeCT.length} items`}
+        </div>
+
+        {inRangeCT.length === 0 ? (
+          <div className="empty" style={{ height: '220px' }}>
+            <div>
+              <Icon name="content" size={28} />
+              <div style={{ marginTop: '8px', fontWeight: 600 }}>No content in selected date range</div>
+              <p style={{ fontSize: '13px', color: 'var(--mute)', marginTop: '4px' }}>
+                Try selecting a broader date range or clearing filters.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="cm g">
+            <div className="clist">
+              {L.map((c) => (
                 <div
                   key={c.id}
                   className={`cit ${c.id === sel ? 'on' : ''}`}
-                  data-id={c.id}
                   onClick={() => setSel(c.id)}
                 >
-                  <div className="t">{badge(c.p)}{c.type}<span>·</span>{fmtD(c.date)}</div>
+                  <div className="t">
+                    <span className="mono">{`#${c.id}`}</span>
+                    <span>·</span>
+                    <span>{`${c.p === 'li' ? 'LinkedIn' : 'X'} · ${c.type}`}</span>
+                    <span>·</span>
+                    <span>{`#${c.topic}`}</span>
+                  </div>
                   <p>{c.text}</p>
                   <div className="meta">
-                    <span>{`Views `}<b className="mono">{c.views}</b></span>
-                    <span>{`Likes `}<b className="mono">{c.likes}</b></span>
-                    <span>{`Replies `}<b className="mono">{c.replies}</b></span>
-                    <span className="mono" style={{ marginLeft: 'auto', color: 'var(--good)' }}>{`${c.eng.toFixed(2)}%`}</span>
+                    <span>
+                      Views <b className="mono">{c.views}</b>
+                    </span>
+                    <span>
+                      Likes <b className="mono">{c.likes}</b>
+                    </span>
+                    <span>
+                      Replies <b className="mono">{c.replies}</b>
+                    </span>
+                    <span className="mono" style={{ color: 'var(--good)' }}>
+                      {`${c.eng.toFixed(2)}%`}
+                    </span>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="empty">No items match.</div>
-            )}
-          </div>
-        </div>
-        <div id="cdet">
-          {selectedItem && (
-            <Tray
-              icon="eye"
-              title="Performance observations"
-              right={
-                <span className="muted mono" style={{ fontSize: '12px' }}>{`#${selectedItem.id}`}</span>
-              }
-            >
-              <span className="tag">{`${selectedItem.p === 'li' ? 'LinkedIn' : 'X'} · ${selectedItem.type}`}</span> <span className="tag">{`#${selectedItem.topic}`}</span>
-              <p style={{ lineHeight: 1.55, marginTop: '6px' }}>{selectedItem.text}</p>
-              <div className="pg">
-                <div>
-                  <small>Impressions</small>
-                  <b className="mono">{selectedItem.views}</b>
+              ))}
+            </div>
+
+            {selectedItem && (
+              <div className="tb" style={{ position: 'sticky', top: '10px' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <b style={{ fontWeight: 600 }}>Inspection</b>
+                  <span className="muted mono" style={{ fontSize: '12px' }}>{`#${selectedItem.id}`}</span>
                 </div>
-                <div>
-                  <small>Likes</small>
-                  <b className="mono">{selectedItem.likes}</b>
+                <div style={{ marginTop: '10px' }}>
+                  <span className="tag">{`${selectedItem.p === 'li' ? 'LinkedIn' : 'X'} · ${selectedItem.type}`}</span>{' '}
+                  <span className="tag">{`#${selectedItem.topic}`}</span>
+                  <p style={{ lineHeight: 1.55, marginTop: '6px' }}>{selectedItem.text}</p>
                 </div>
-                <div>
-                  <small>Replies</small>
-                  <b className="mono">{selectedItem.replies}</b>
+                <div className="pg">
+                  <div>
+                    <small>Impressions</small>
+                    <b className="mono">{selectedItem.views}</b>
+                  </div>
+                  <div>
+                    <small>Likes</small>
+                    <b className="mono">{selectedItem.likes}</b>
+                  </div>
+                  <div>
+                    <small>Replies</small>
+                    <b className="mono">{selectedItem.replies}</b>
+                  </div>
+                  <div>
+                    <small>Engagement</small>
+                    <b className="mono" style={{ color: 'var(--good)' }}>{`${selectedItem.eng.toFixed(2)}%`}</b>
+                  </div>
                 </div>
-                <div>
-                  <small>Engagement</small>
-                  <b className="mono" style={{ color: 'var(--good)' }}>{`${selectedItem.eng.toFixed(2)}%`}</b>
+                <div className="fld" style={{ marginTop: '10px' }}>
+                  Strategic note
+                  <textarea
+                    id="cn"
+                    placeholder="Add qualitative observation or follow-up hook…"
+                    value={selectedItem.note}
+                    onChange={(e) => {
+                      selectedItem.note = e.target.value;
+                    }}
+                  />
                 </div>
               </div>
-              <label className="fld">
-                Private founder notes
-                <textarea
-                  id="nt"
-                  placeholder="What worked, what to repeat…"
-                  value={selectedItem.note}
-                  onChange={(e) => {
-                    selectedItem.note = e.target.value;
-                    setTick((t) => t + 1);
-                  }}
-                />
-              </label>
-            </Tray>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
+        )}
+      </Tray>
     </>
   );
 };

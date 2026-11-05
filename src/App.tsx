@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { D, N, CT, TODAY, streak } from './data';
+import { D, N, CT, streak } from './data';
 import { Icon } from './utils';
 import { TodayPage } from './pages/TodayPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
@@ -7,7 +7,9 @@ import { ContentPage } from './pages/ContentPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
-import { TopBarDateControl } from './components/TopBarDateControl';
+import { UnifiedDatePicker } from './components/UnifiedDatePicker';
+import { SelectDropdown } from './components/base/dropdown/SelectDropdown';
+import { DateStoreProvider, useDateRangeStore } from './store/dateStore';
 
 const TITLES: Record<string, string> = {
   today: 'Today',
@@ -24,7 +26,17 @@ const NAV1 = [
   ['review', 'Weekly review'],
 ];
 
-export const App: React.FC = () => {
+const PLATFORM_OPTIONS = [
+  { value: 'x', label: 'X' },
+  { value: 'li', label: 'LinkedIn' },
+];
+
+const TYPE_OPTIONS = [
+  { value: 'p', label: 'Original post' },
+  { value: 'r', label: 'Outbound reply' },
+];
+
+const AppContent: React.FC = () => {
   const getHashRoute = () => {
     const h = (window.location.hash || '#today').slice(1);
     return ['today', 'analytics', 'content', 'review', 'settings', 'login'].includes(h)
@@ -42,6 +54,10 @@ export const App: React.FC = () => {
   const [sel, setSel] = useState<number>(1);
   const [settingsTab, setSettingsTab] = useState<string>('profile');
   const [, setTick] = useState<number>(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const viewRef = useRef<HTMLDivElement>(null);
+  const { scheduledAt } = useDateRangeStore();
 
   // Dialog state
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -54,10 +70,12 @@ export const App: React.FC = () => {
       const newRoute = getHashRoute();
       setRoute(newRoute);
       document.body.classList.toggle('is-login', newRoute === 'login');
+      if (viewRef.current) {
+        viewRef.current.scrollTop = 0;
+      }
     };
 
     window.addEventListener('hashchange', handleHashChange);
-    // Initial class setting
     document.body.classList.toggle('is-login', route === 'login');
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -68,6 +86,9 @@ export const App: React.FC = () => {
           const cqInput = document.getElementById('cq') as HTMLInputElement | null;
           if (cqInput) cqInput.focus();
         }, 50);
+      }
+      if (e.key === 'Escape') {
+        setIsSidebarOpen(false);
       }
     };
 
@@ -112,8 +133,6 @@ export const App: React.FC = () => {
         return (
           <AnalyticsPage
             plat={plat}
-            rangeN={rangeN}
-            setRangeN={setRangeN}
             mt={mt}
             setMt={setMt}
           />
@@ -150,93 +169,164 @@ export const App: React.FC = () => {
 
   const activePageTitle = TITLES[route] || 'Today';
 
+  const renderSidebar = (isDrawer = false) => (
+    <aside className={isDrawer ? 'drawer-aside' : 'desktop-sidebar'}>
+      <div className="brand" style={{ justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div className="logo">V</div>
+          <div>
+            <b>Verasett</b>
+            <small>Social Activity</small>
+          </div>
+        </div>
+        {isDrawer && (
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            style={{
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              color: 'var(--mute)',
+              display: 'grid',
+              placeItems: 'center',
+            }}
+            aria-label="Close menu"
+          >
+            <Icon name="close" size={18} />
+          </button>
+        )}
+      </div>
+      <div
+        className="search"
+        id={isDrawer ? 'gs-drawer' : 'gs'}
+        onClick={() => {
+          handleSearchClick();
+          if (isDrawer) setIsSidebarOpen(false);
+        }}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="M20 20l-3.5-3.5" />
+        </svg>
+        Search<kbd>⌘ K</kbd>
+      </div>
+      <div className="sidebar-scroll">
+        <div>
+          <div className="gl">Workspace</div>
+          <nav id={isDrawer ? 'nav1-drawer' : 'nav1'}>
+            {NAV1.map(([k, t]) => (
+              <a
+                key={k}
+                href={`#${k}`}
+                data-k={k}
+                className={route === k ? 'on' : undefined}
+                onClick={() => {
+                  if (isDrawer) setIsSidebarOpen(false);
+                }}
+              >
+                <Icon name={k === 'today' ? 'today' : k} size={17} />
+                {t}
+                {k === 'content' && <span className="cnt mono">{CT.length}</span>}
+              </a>
+            ))}
+          </nav>
+        </div>
+        <div>
+          <div className="gl">System</div>
+          <nav id={isDrawer ? 'nav2-drawer' : 'nav2'}>
+            <a
+              href="#settings"
+              data-k="settings"
+              className={route === 'settings' ? 'on' : undefined}
+              onClick={() => {
+                if (isDrawer) setIsSidebarOpen(false);
+              }}
+            >
+              <Icon name="settings" size={17} />
+              Settings
+            </a>
+          </nav>
+        </div>
+      </div>
+      <div className="me">
+        <div className="tray">
+          <div className="tb" style={{ padding: '12px 14px' }}>
+            <div className="kv">
+              <span className="muted" style={{ fontSize: '12.5px' }}>
+                Current streak
+              </span>
+              <span className="pill or" id={isDrawer ? 'sk-drawer' : 'sk'}>
+                <Icon name="flame" size={12} />
+                {`${streak()} days`}
+              </span>
+            </div>
+            <div className="muted" style={{ fontSize: '12px', marginTop: '6px' }}>
+              Asia/Kolkata day boundary
+            </div>
+          </div>
+        </div>
+        <div className="user">
+          <div className="av"></div>
+          <div>
+            <b style={{ fontWeight: 500 }}>Kartik Sharma</b>
+            <small>Asia/Kolkata</small>
+          </div>
+          <button
+            id={isDrawer ? 'lo-drawer' : 'lo'}
+            title="Sign out"
+            onClick={() => {
+              window.location.hash = '#login';
+              if (isDrawer) setIsSidebarOpen(false);
+            }}
+          >
+            <Icon name="out" size={16} />
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+
   return (
     <>
       <div className="shell">
-        <aside>
-          <div className="brand">
-            <div className="logo">V</div>
-            <div>
-              <b>Verasett</b>
-              <small>Social Activity</small>
-            </div>
-          </div>
-          <div className="search" id="gs" onClick={handleSearchClick}>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="M20 20l-3.5-3.5" />
-            </svg>Search<kbd>⌘ K</kbd>
-          </div>
-          <div>
-            <div className="gl">Workspace</div>
-            <nav id="nav1">
-              {NAV1.map(([k, t]) => (
-                <a
-                  key={k}
-                  href={`#${k}`}
-                  data-k={k}
-                  className={route === k ? 'on' : undefined}
-                ><Icon name={k === 'today' ? 'today' : k} size={17} />{t}{k === 'content' && <span className="cnt mono">{CT.length}</span>}</a>
-              ))}
-            </nav>
-          </div>
-          <div>
-            <div className="gl">System</div>
-            <nav id="nav2">
-              <a
-                href="#settings"
-                data-k="settings"
-                className={route === 'settings' ? 'on' : undefined}
-              ><Icon name="settings" size={17} />Settings</a>
-            </nav>
-          </div>
-          <div className="me">
-            <div className="tray">
-              <div className="tb" style={{ padding: '12px 14px' }}>
-                <div className="kv">
-                  <span className="muted" style={{ fontSize: '12.5px' }}>
-                    Current streak
-                  </span>
-                  <span className="pill or" id="sk"><Icon name="flame" size={12} />{`${streak()} days`}</span>
-                </div>
-                <div className="muted" style={{ fontSize: '12px', marginTop: '6px' }}>
-                  Asia/Kolkata day boundary
-                </div>
-              </div>
-            </div>
-            <div className="user">
-              <div className="av"></div>
-              <div>
-                <b style={{ fontWeight: 500 }}>Kartik Sharma</b>
-                <small>Asia/Kolkata</small>
-              </div>
-              <button
-                id="lo"
-                title="Sign out"
-                onClick={() => {
-                  window.location.hash = '#login';
-                }}
-              >
-                <Icon name="out" size={16} />
-              </button>
-            </div>
-          </div>
-        </aside>
+        {renderSidebar(false)}
+
+        {isSidebarOpen && (
+          <>
+            <div
+              className="drawer-backdrop"
+              onClick={() => setIsSidebarOpen(false)}
+              aria-hidden="true"
+            />
+            {renderSidebar(true)}
+          </>
+        )}
+
         <main>
           <div className="top">
             <div className="crumb">
-              Verasett &nbsp;›&nbsp; <b id="crumb">{activePageTitle}</b>
+              <button
+                className="menu-btn"
+                aria-label="Toggle navigation menu"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              >
+                <Icon name="menu" size={18} />
+              </button>
+              <span>
+                Verasett &nbsp;›&nbsp; <b id="crumb">{activePageTitle}</b>
+              </span>
             </div>
             <div className="tools">
-              <TopBarDateControl />
+              <UnifiedDatePicker />
               <div className="seg" id="ps">
                 <button
                   data-p="all"
@@ -260,11 +350,14 @@ export const App: React.FC = () => {
                   LinkedIn
                 </button>
               </div>
-              <button className="btn" id="add" onClick={handleOpenDialog}><Icon name="plus" size={15} />Add activity</button>
+              <button className="btn" id="add" onClick={handleOpenDialog}>
+                <Icon name="plus" size={15} />
+                Add activity
+              </button>
             </div>
           </div>
-          <div className="wrap" id="view">
-            {renderView()}
+          <div className="wrap" id="view" ref={viewRef}>
+            <div className="wrap-inner">{renderView()}</div>
           </div>
         </main>
       </div>
@@ -275,25 +368,23 @@ export const App: React.FC = () => {
         <h3 style={{ fontSize: '18px', letterSpacing: '-.02em' }}>Add activity</h3>
         <label className="fld">
           Platform
-          <select
+          <SelectDropdown
             id="a_p"
             value={dialogPlat}
-            onChange={(e) => setDialogPlat(e.target.value)}
-          >
-            <option value="x">X</option>
-            <option value="li">LinkedIn</option>
-          </select>
+            onChange={setDialogPlat}
+            options={PLATFORM_OPTIONS}
+            aria-label="Platform"
+          />
         </label>
         <label className="fld">
           Type
-          <select
+          <SelectDropdown
             id="a_t"
             value={dialogType}
-            onChange={(e) => setDialogType(e.target.value)}
-          >
-            <option value="p">Original post</option>
-            <option value="r">Outbound reply</option>
-          </select>
+            onChange={setDialogType}
+            options={TYPE_OPTIONS}
+            aria-label="Activity type"
+          />
         </label>
         <label className="fld">
           Count
@@ -307,6 +398,26 @@ export const App: React.FC = () => {
             }
           />
         </label>
+        {scheduledAt && (
+          <div
+            style={{
+              fontSize: '12px',
+              padding: '8px 10px',
+              background: 'var(--card-tray)',
+              borderRadius: '8px',
+              marginTop: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: 'var(--ink-2)',
+            }}
+          >
+            <Icon name="clock" size={14} />
+            <span>
+              Pre-filled time: <b>{scheduledAt.timeString}</b> ({scheduledAt.date.day}/{scheduledAt.date.month}/{scheduledAt.date.year} · {scheduledAt.timeZone})
+            </span>
+          </div>
+        )}
         <menu>
           <button
             className="btn ghost"
@@ -322,10 +433,18 @@ export const App: React.FC = () => {
             type="button"
             onClick={handleAddActivity}
           >
-            Add to today
+            {scheduledAt ? 'Schedule activity' : 'Add to today'}
           </button>
         </menu>
       </dialog>
     </>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <DateStoreProvider>
+      <AppContent />
+    </DateStoreProvider>
   );
 };
