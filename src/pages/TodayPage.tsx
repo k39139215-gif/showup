@@ -26,6 +26,7 @@ import {
 import { useDateRangeStore } from '../store/dateStore';
 import { Skeleton } from '../components/base/skeleton/skeleton';
 import { Tooltip, TooltipTrigger } from '../components/base/tooltip/tooltip';
+import { Badge } from '../components/base/badges/badge';
 import { useLoadingState } from '../hooks/useLoadingState';
 
 interface TodayPageProps {
@@ -279,9 +280,9 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
                       {x[2] >= x[3] && (
                         <>
                           {' '}
-                          <span className="pill up" style={{ marginLeft: '6px' }}>
+                          <Badge color="primary" className="pill up" style={{ marginLeft: '6px' }}>
                             Met
-                          </span>
+                          </Badge>
                         </>
                       )}
                     </span>

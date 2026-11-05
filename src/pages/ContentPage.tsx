@@ -7,6 +7,14 @@ import { Skeleton } from '../components/base/skeleton/skeleton';
 import { Tooltip, TooltipTrigger } from '../components/base/tooltip/tooltip';
 import { toast } from '../components/base/toast/toast';
 import { useLoadingState } from '../hooks/useLoadingState';
+import { Dropdown, DropdownTrigger, DropdownPopover, DropdownItem } from '../components/base/dropdown/dropdown';
+import {
+  ContextMenuTrigger,
+  ContextMenu,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from '../components/base/context-menu/context-menu';
+import { RiMoreLine } from '@remixicon/react';
 
 interface ContentPageProps {
   plat: string;
@@ -179,37 +187,93 @@ export const ContentPage: React.FC<ContentPageProps> = ({
             <Skeleton isLoaded={isLoaded} className="w-full">
               <div className="clist">
                 {L.map((c) => (
-                  <div
-                    key={c.id}
-                    className={`cit ${c.id === sel ? 'on' : ''}`}
-                    onClick={() => setSel(c.id)}
-                  >
-                    <div className="t">
-                      <span className="mono">{`#${c.id}`}</span>
-                      <span>·</span>
-                      <span>{`${c.p === 'li' ? 'LinkedIn' : 'X'} · ${c.type}`}</span>
-                      <span>·</span>
-                      <span>{`#${c.topic}`}</span>
+                  <ContextMenuTrigger key={c.id}>
+                    <div
+                      className={`cit ${c.id === sel ? 'on' : ''}`}
+                      onClick={() => setSel(c.id)}
+                    >
+                      <div className="t flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="mono">{`#${c.id}`}</span>
+                          <span>·</span>
+                          <span>{`${c.p === 'li' ? 'LinkedIn' : 'X'} · ${c.type}`}</span>
+                          <span>·</span>
+                          <span>{`#${c.topic}`}</span>
+                        </div>
+                        <Dropdown>
+                          <DropdownTrigger
+                            className="row-menu-btn h-5 w-5 rounded hover:bg-neutral-200 flex items-center justify-center text-neutral-500 cursor-pointer shrink-0"
+                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                            aria-label="Post actions"
+                          >
+                            <RiMoreLine className="size-4" />
+                          </DropdownTrigger>
+                          <DropdownPopover aria-label="Row actions" placement="bottom end" className="w-36 z-[120]">
+                            <DropdownItem onSelect={() => toast.info(`Editing post #${c.id}`)}>
+                              Edit
+                            </DropdownItem>
+                            <DropdownItem
+                              onSelect={() => {
+                                navigator.clipboard?.writeText(c.text);
+                                toast.success('Copied link');
+                              }}
+                            >
+                              Copy link
+                            </DropdownItem>
+                            <DropdownItem
+                              onSelect={() => toast.info(`Deleted post #${c.id}`)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              Delete
+                            </DropdownItem>
+                          </DropdownPopover>
+                        </Dropdown>
+                      </div>
+                      <TooltipTrigger delay={200}>
+                        <p className="line-clamp-2">{c.text}</p>
+                        <Tooltip size="sm">{c.text}</Tooltip>
+                      </TooltipTrigger>
+                      <div className="meta">
+                        <span>
+                          Views <b className="mono">{c.views}</b>
+                        </span>
+                        <span>
+                          Likes <b className="mono">{c.likes}</b>
+                        </span>
+                        <span>
+                          Replies <b className="mono">{c.replies}</b>
+                        </span>
+                        <span className="mono" style={{ color: 'var(--good)' }}>
+                          {`${c.eng.toFixed(2)}%`}
+                        </span>
+                      </div>
                     </div>
-                    <TooltipTrigger delay={200}>
-                      <p className="line-clamp-2">{c.text}</p>
-                      <Tooltip size="sm">{c.text}</Tooltip>
-                    </TooltipTrigger>
-                    <div className="meta">
-                      <span>
-                        Views <b className="mono">{c.views}</b>
-                      </span>
-                      <span>
-                        Likes <b className="mono">{c.likes}</b>
-                      </span>
-                      <span>
-                        Replies <b className="mono">{c.replies}</b>
-                      </span>
-                      <span className="mono" style={{ color: 'var(--good)' }}>
-                        {`${c.eng.toFixed(2)}%`}
-                      </span>
-                    </div>
-                  </div>
+                    <ContextMenu aria-label="Post actions">
+                      <ContextMenuItem id="open" onAction={() => setSel(c.id)}>
+                        Open
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        id="copy"
+                        onAction={() => {
+                          navigator.clipboard?.writeText(c.text);
+                          toast.success('Copied link');
+                        }}
+                      >
+                        Copy link
+                      </ContextMenuItem>
+                      <ContextMenuItem id="edit" onAction={() => toast.info(`Editing post #${c.id}`)}>
+                        Edit
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        id="delete"
+                        variant="danger"
+                        onAction={() => toast.info(`Deleted post #${c.id}`)}
+                      >
+                        Delete
+                      </ContextMenuItem>
+                    </ContextMenu>
+                  </ContextMenuTrigger>
                 ))}
               </div>
             </Skeleton>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { D, N, CT, streak } from './data';
+import { CalendarDate } from '@internationalized/date';
+import { D, N, CT, streak, TOPICS } from './data';
 import { Icon } from './utils';
 import { TodayPage } from './pages/TodayPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
@@ -12,6 +13,15 @@ import { BoardSelect } from './components/base/select/BoardSelect';
 import { BoardSegmentedControl } from './components/base/segmented-control/BoardSegmentedControl';
 import { Toaster, toast } from './components/base/toast/toast';
 import { Tooltip, TooltipTrigger } from './components/base/tooltip/tooltip';
+import { Breadcrumb, BreadcrumbItem } from './components/base/breadcrumb/breadcrumb';
+import { Avatar } from './components/base/avatar/avatar';
+import { Badge } from './components/base/badges/badge';
+import {
+  CommandPalette,
+  CommandPaletteSection,
+  CommandPaletteItem,
+} from './components/base/command-palette/command-palette';
+import { Drawer } from './components/base/drawer/drawer';
 import { DateStoreProvider, useDateRangeStore } from './store/dateStore';
 
 const TITLES: Record<string, string> = {
@@ -58,9 +68,10 @@ const AppContent: React.FC = () => {
   const [settingsTab, setSettingsTab] = useState<string>('profile');
   const [, setTick] = useState<number>(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   const viewRef = useRef<HTMLDivElement>(null);
-  const { scheduledAt } = useDateRangeStore();
+  const { scheduledAt, setRange, setSingleDate } = useDateRangeStore();
 
   // Dialog state
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -84,11 +95,7 @@ const AppContent: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        window.location.hash = '#content';
-        setTimeout(() => {
-          const cqInput = document.getElementById('cq') as HTMLInputElement | null;
-          if (cqInput) cqInput.focus();
-        }, 50);
+        setIsCommandPaletteOpen((prev) => !prev);
       }
       if (e.key === 'Escape') {
         setIsSidebarOpen(false);
@@ -104,7 +111,7 @@ const AppContent: React.FC = () => {
   }, [route]);
 
   const handleSearchClick = () => {
-    window.location.hash = '#content';
+    setIsCommandPaletteOpen(true);
   };
 
   const handleOpenDialog = () => {
@@ -254,7 +261,11 @@ const AppContent: React.FC = () => {
               >
                 <Icon name={k === 'today' ? 'today' : k} size={17} />
                 {t}
-                {k === 'content' && <span className="cnt mono">{CT.length}</span>}
+                {k === 'content' && (
+                  <Badge color={route === 'content' ? 'primary' : 'neutral'} className="cnt mono">
+                    {CT.length}
+                  </Badge>
+                )}
               </a>
             ))}
           </nav>
@@ -293,11 +304,11 @@ const AppContent: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="user">
-          <div className="av"></div>
-          <div>
-            <b style={{ fontWeight: 500 }}>Kartik Sharma</b>
-            <small>Asia/Kolkata</small>
+        <div className="user flex items-center gap-2.5">
+          <Avatar size="md" initials="KS" color="neutral" className="av" />
+          <div className="flex-1 min-w-0">
+            <b style={{ fontWeight: 500 }} className="truncate block">Kartik Sharma</b>
+            <small className="truncate block">Asia/Kolkata</small>
           </div>
           <TooltipTrigger delay={100}>
             <button
@@ -322,20 +333,32 @@ const AppContent: React.FC = () => {
       <div className="shell">
         {renderSidebar(false)}
 
-        {isSidebarOpen && (
-          <>
-            <div
-              className="drawer-backdrop"
-              onClick={() => setIsSidebarOpen(false)}
-              aria-hidden="true"
-            />
-            {renderSidebar(true)}
-          </>
-        )}
+        <Drawer
+          isOpen={isSidebarOpen}
+          onOpenChange={setIsSidebarOpen}
+          placement="start"
+          isDismissable
+          aria-label="Navigation drawer"
+          className="p-0 border-none shadow-none bg-transparent w-[260px] h-full"
+          overlayClassName="z-[110]"
+        >
+          {() =>
+            isSidebarOpen ? (
+              <div className="relative h-full">
+                <div
+                  className="drawer-backdrop fixed inset-0 bg-black/40"
+                  onClick={() => setIsSidebarOpen(false)}
+                  aria-hidden="true"
+                />
+                {renderSidebar(true)}
+              </div>
+            ) : null
+          }
+        </Drawer>
 
         <main>
           <div className="top">
-            <div className="crumb">
+            <div className="crumb flex items-center gap-2">
               <button
                 className="menu-btn"
                 aria-label="Toggle navigation menu"
@@ -343,9 +366,12 @@ const AppContent: React.FC = () => {
               >
                 <Icon name="menu" size={18} />
               </button>
-              <span>
-                Verasett &nbsp;›&nbsp; <b id="crumb">{activePageTitle}</b>
-              </span>
+              <Breadcrumb aria-label="Breadcrumb">
+                <BreadcrumbItem href="#today">Verasett</BreadcrumbItem>
+                <BreadcrumbItem current>
+                  <b id="crumb">{activePageTitle}</b>
+                </BreadcrumbItem>
+              </Breadcrumb>
             </div>
             <div className="tools">
               <UnifiedDatePicker />
@@ -447,6 +473,151 @@ const AppContent: React.FC = () => {
           </button>
         </menu>
       </dialog>
+
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onOpenChange={setIsCommandPaletteOpen}
+        placeholder="Type a command or search…"
+      >
+        <CommandPaletteSection title="Pages">
+          <CommandPaletteItem
+            id="page-today"
+            shortcut="1"
+            onAction={() => {
+              window.location.hash = '#today';
+            }}
+          >
+            Today
+          </CommandPaletteItem>
+          <CommandPaletteItem
+            id="page-analytics"
+            shortcut="2"
+            onAction={() => {
+              window.location.hash = '#analytics';
+            }}
+          >
+            Analytics
+          </CommandPaletteItem>
+          <CommandPaletteItem
+            id="page-content"
+            shortcut="3"
+            onAction={() => {
+              window.location.hash = '#content';
+            }}
+          >
+            Content & reply library
+          </CommandPaletteItem>
+          <CommandPaletteItem
+            id="page-review"
+            shortcut="4"
+            onAction={() => {
+              window.location.hash = '#review';
+            }}
+          >
+            Weekly review
+          </CommandPaletteItem>
+          <CommandPaletteItem
+            id="page-settings"
+            shortcut="5"
+            onAction={() => {
+              window.location.hash = '#settings';
+            }}
+          >
+            Settings
+          </CommandPaletteItem>
+        </CommandPaletteSection>
+
+        <CommandPaletteSection title="Date shortcuts">
+          <CommandPaletteItem
+            id="date-today"
+            onAction={() => {
+              setSingleDate(new CalendarDate(2026, 11, 5));
+              toast.info('Date set to Today');
+            }}
+          >
+            Today (5 Nov 2026)
+          </CommandPaletteItem>
+          <CommandPaletteItem
+            id="date-7d"
+            onAction={() => {
+              setRange(new CalendarDate(2026, 10, 30), new CalendarDate(2026, 11, 5));
+              toast.info('Date range set to Last 7 days');
+            }}
+          >
+            Last 7 days (30 Oct - 5 Nov)
+          </CommandPaletteItem>
+          <CommandPaletteItem
+            id="date-30d"
+            onAction={() => {
+              setRange(new CalendarDate(2026, 10, 7), new CalendarDate(2026, 11, 5));
+              toast.info('Date range set to Last 30 days');
+            }}
+          >
+            Last 30 days (7 Oct - 5 Nov)
+          </CommandPaletteItem>
+          <CommandPaletteItem
+            id="date-all"
+            onAction={() => {
+              setRange(new CalendarDate(2026, 8, 8), new CalendarDate(2026, 11, 5));
+              toast.info('Date range set to All time');
+            }}
+          >
+            All time (8 Aug - 5 Nov)
+          </CommandPaletteItem>
+        </CommandPaletteSection>
+
+        <CommandPaletteSection title="Topics">
+          {TOPICS.map((topic) => (
+            <CommandPaletteItem
+              key={topic}
+              id={`topic-${topic}`}
+              onAction={() => {
+                setCq(topic);
+                window.location.hash = '#content';
+                toast.info(`Filtered content by #${topic}`);
+              }}
+            >
+              #{topic}
+            </CommandPaletteItem>
+          ))}
+        </CommandPaletteSection>
+
+        <CommandPaletteSection title="Actions">
+          <CommandPaletteItem
+            id="action-add"
+            shortcut="A"
+            onAction={() => handleOpenDialog()}
+          >
+            Add activity
+          </CommandPaletteItem>
+          <CommandPaletteItem
+            id="action-plat"
+            shortcut="P"
+            onAction={() => {
+              setPlat((prev) => (prev === 'all' ? 'x' : prev === 'x' ? 'li' : 'all'));
+              toast.info('Platform filter toggled');
+            }}
+          >
+            Toggle platform filter (All / X / LinkedIn)
+          </CommandPaletteItem>
+        </CommandPaletteSection>
+
+        <CommandPaletteSection title="Recent content">
+          {CT.slice(0, 5).map((item) => (
+            <CommandPaletteItem
+              key={item.id}
+              id={`content-${item.id}`}
+              description={`#${item.id} · ${item.p === 'li' ? 'LinkedIn' : 'X'} · #${item.topic}`}
+              onAction={() => {
+                setSel(item.id);
+                window.location.hash = '#content';
+              }}
+            >
+              {item.text.slice(0, 60)}
+            </CommandPaletteItem>
+          ))}
+        </CommandPaletteSection>
+      </CommandPalette>
     </>
   );
 };
