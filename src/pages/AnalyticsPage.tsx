@@ -15,6 +15,9 @@ import {
   Icon,
 } from '../utils';
 import { useDateRangeStore } from '../store/dateStore';
+import { BoardSegmentedControl } from '../components/base/segmented-control/BoardSegmentedControl';
+import { Skeleton } from '../components/base/skeleton/skeleton';
+import { useLoadingState } from '../hooks/useLoadingState';
 import { CalendarDate } from '@internationalized/date';
 
 const TODAY_CALENDAR = new CalendarDate(2026, 11, 5);
@@ -177,6 +180,8 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
 }) => {
   const { end, daysCount, dateSlice, previousPeriod, setRange, rangeLabel } = useDateRangeStore();
 
+  const isLoaded = useLoadingState([plat, mt, daysCount, rangeLabel]);
+
   const S = dateSlice.days;
   const prevS = dateSlice.prevDays;
   const hasData = dateSlice.hasData;
@@ -233,18 +238,18 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
           <h1>Analytics</h1>
           <p className="sub">{`Volume efficiency and comparisons for ${rangeLabel}`}</p>
         </div>
-        <div className="seg" id="rg">
-          {[7, 14, 30, 60].map((n) => (
-            <button
-              key={n}
-              data-n={n}
-              className={isShortcutActive(n) ? 'on' : ''}
-              onClick={() => handleShortcutClick(n)}
-            >
-              {`${n}d`}
-            </button>
-          ))}
-        </div>
+        <BoardSegmentedControl
+          id="rg"
+          value={String([7, 14, 30, 60].find((n) => isShortcutActive(n)) || '30')}
+          onChange={(val) => handleShortcutClick(parseInt(val, 10))}
+          options={[
+            { value: '7', label: '7d' },
+            { value: '14', label: '14d' },
+            { value: '30', label: '30d' },
+            { value: '60', label: '60d' },
+          ]}
+          aria-label="Quick date range shortcuts"
+        />
       </div>
 
       {!hasData ? (
@@ -306,38 +311,35 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
               icon="trend"
               title="Metric trajectory"
               right={
-                <div className="seg" id="mt">
-                  {[
-                    ['views', 'Views'],
-                    ['replies', 'Replies'],
-                    ['posts', 'Posts'],
-                  ].map(([k, t]) => (
-                    <button
-                      key={k}
-                      data-m={k}
-                      className={mt === k ? 'on' : ''}
-                      onClick={() => setMt(k)}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
+                <BoardSegmentedControl
+                  id="mt"
+                  value={mt}
+                  onChange={setMt}
+                  options={[
+                    { value: 'views', label: 'Views' },
+                    { value: 'replies', label: 'Replies' },
+                    { value: 'posts', label: 'Posts' },
+                  ]}
+                  aria-label="Metric tabs"
+                />
               }
             >
-              <div id="lch">
-                <LineChart
-                  vals={S.map((d) =>
-                    mt === 'views'
-                      ? pick(d, 'v', plat)
-                      : mt === 'replies'
-                      ? pick(d, 'r', plat)
-                      : pick(d, 'p', plat)
-                  )}
-                  labels={L}
-                  color="#1a56db"
-                  unit={mt}
-                />
-              </div>
+              <Skeleton isLoaded={isLoaded} className="w-full">
+                <div id="lch">
+                  <LineChart
+                    vals={S.map((d) =>
+                      mt === 'views'
+                        ? pick(d, 'v', plat)
+                        : mt === 'replies'
+                        ? pick(d, 'r', plat)
+                        : pick(d, 'p', plat)
+                    )}
+                    labels={L}
+                    color="#1a56db"
+                    unit={mt}
+                  />
+                </div>
+              </Skeleton>
             </Tray>
           </div>
 

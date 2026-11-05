@@ -18,7 +18,10 @@ import {
   TIMEZONE_OPTIONS,
 } from '../utils/dateMath';
 import { TODAY } from '../data';
-import { SelectDropdown } from './base/dropdown/SelectDropdown';
+import { BoardSelect } from './base/select/BoardSelect';
+import { BoardSegmentedControl } from './base/segmented-control/BoardSegmentedControl';
+import { Tooltip, TooltipTrigger } from './base/tooltip/tooltip';
+import { toast } from './base/toast/toast';
 import { cx } from '../utils/cx';
 
 const TODAY_CALENDAR = new CalendarDate(2026, 11, 5); // Fixed app base: Nov 5, 2026
@@ -250,6 +253,9 @@ export const UnifiedDatePicker: React.FC = () => {
     setDraftEnd(r.end);
     setPickingEnd(false);
     setVisibleMonth(new CalendarDate(r.start.year, r.start.month, 1));
+    if (preset.id === 'allTime') {
+      toast.info('Date range reset to all time');
+    }
   };
 
   const handleDayClick = (day: CalendarDate) => {
@@ -376,23 +382,34 @@ export const UnifiedDatePicker: React.FC = () => {
           )}
 
           {/* Cell button */}
-          <button
-            type="button"
-            disabled={isFuture}
-            onClick={() => handleDayClick(cellDate)}
-            className={cx(
-              'day-cell relative z-10 size-8 flex items-center justify-center rounded-lg text-[13px] font-medium outline-none transition-colors border-0',
-              isFuture && 'opacity-25 cursor-not-allowed text-[#a9a69d]',
-              !isFuture && !isInRange && 'hover:bg-[#f5f4ef] text-[var(--ink)] cursor-pointer',
-              !isFuture && isInRange && !isEdge && 'text-[#1c1b18] cursor-pointer',
-              isEdge && '!bg-[#2563eb] !text-white font-semibold cursor-pointer shadow-sm',
-              isStart && !isSingleDay && 'rounded-s-lg',
-              isEnd && !isSingleDay && 'rounded-e-lg',
-              'focus-visible:ring-2 focus-visible:ring-[#2563eb]'
-            )}
-          >
-            {dayNum}
-          </button>
+          {isFuture ? (
+            <TooltipTrigger delay={100}>
+              <button
+                type="button"
+                disabled
+                className="day-cell relative z-10 size-8 flex items-center justify-center rounded-lg text-[13px] font-medium outline-none transition-colors border-0 opacity-25 cursor-not-allowed text-[#a9a69d]"
+              >
+                {dayNum}
+              </button>
+              <Tooltip size="sm">Future dates cannot be selected</Tooltip>
+            </TooltipTrigger>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleDayClick(cellDate)}
+              className={cx(
+                'day-cell relative z-10 size-8 flex items-center justify-center rounded-lg text-[13px] font-medium outline-none transition-colors border-0',
+                !isInRange && 'hover:bg-[#f5f4ef] text-[var(--ink)] cursor-pointer',
+                isInRange && !isEdge && 'text-[#1c1b18] cursor-pointer',
+                isEdge && '!bg-[#2563eb] !text-white font-semibold cursor-pointer shadow-sm',
+                isStart && !isSingleDay && 'rounded-s-lg',
+                isEnd && !isSingleDay && 'rounded-e-lg',
+                'focus-visible:ring-2 focus-visible:ring-[#2563eb]'
+              )}
+            >
+              {dayNum}
+            </button>
+          )}
         </div>
       );
     }
@@ -441,31 +458,27 @@ export const UnifiedDatePicker: React.FC = () => {
         >
           {/* Top Row inside Popover: Segmented Control [ Single | Range ] */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--line)] bg-[#fbfbfa]">
-            <div className="seg" id="cal-mode-seg">
-              <button
-                type="button"
-                className={cx(draftMode === 'single' ? 'on' : undefined)}
-                onClick={() => {
+            <BoardSegmentedControl
+              id="cal-mode-seg"
+              value={draftMode}
+              onChange={(val) => {
+                if (val === 'single') {
                   setDraftMode('single');
                   setDraftEnd(draftStart);
                   setPickingEnd(false);
-                }}
-              >
-                Single
-              </button>
-              <button
-                type="button"
-                className={cx(draftMode === 'range' ? 'on' : undefined)}
-                onClick={() => {
+                } else {
                   setDraftMode('range');
                   if (draftStart.compare(draftEnd) === 0) {
                     setDraftEnd(draftStart.add({ days: 6 }));
                   }
-                }}
-              >
-                Range
-              </button>
-            </div>
+                }
+              }}
+              options={[
+                { value: 'single', label: 'Single' },
+                { value: 'range', label: 'Range' },
+              ]}
+              aria-label="Calendar mode selection"
+            />
             <button
               type="button"
               className="size-8 rounded-lg flex items-center justify-center text-[var(--mute)] hover:bg-[#f5f4ef] border-0 cursor-pointer"
@@ -605,7 +618,7 @@ export const UnifiedDatePicker: React.FC = () => {
               <div className="w-[220px] shrink-0 border-l border-[var(--line)] p-3 flex flex-col bg-[#fbfbfa]">
                 <div className="font-semibold text-[13px] text-[var(--ink)] pb-2">Schedule Time</div>
                 <div className="mb-2">
-                  <SelectDropdown
+                  <BoardSelect
                     value={selectedTimezone}
                     onChange={(tz) => setSelectedTimezone(tz)}
                     options={TIMEZONE_OPTIONS}

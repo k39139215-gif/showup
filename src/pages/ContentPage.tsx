@@ -2,7 +2,11 @@ import React, { useEffect, useMemo } from 'react';
 import { CT, TOPICS } from '../data';
 import { Icon, Tray } from '../utils';
 import { useDateRangeStore } from '../store/dateStore';
-import { SelectDropdown, SelectOption } from '../components/base/dropdown/SelectDropdown';
+import { BoardSelect, SelectOption } from '../components/base/select/BoardSelect';
+import { Skeleton } from '../components/base/skeleton/skeleton';
+import { Tooltip, TooltipTrigger } from '../components/base/tooltip/tooltip';
+import { toast } from '../components/base/toast/toast';
+import { useLoadingState } from '../hooks/useLoadingState';
 
 interface ContentPageProps {
   plat: string;
@@ -41,6 +45,8 @@ export const ContentPage: React.FC<ContentPageProps> = ({
   setSel,
 }) => {
   const { isDateInCurrentRange, rangeLabel } = useDateRangeStore();
+
+  const isLoaded = useLoadingState([plat, ct, cs, rangeLabel]);
 
   // Filter content items by current date range
   const inRangeCT = useMemo(() => {
@@ -114,7 +120,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
             />
           </div>
 
-          <SelectDropdown
+          <BoardSelect
             id="ct"
             value={ct}
             onChange={(val) => setCt(val)}
@@ -123,7 +129,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
             aria-label="Filter by content type"
           />
 
-          <SelectDropdown
+          <BoardSelect
             id="cs"
             value={cs}
             onChange={(val) => setCs(val)}
@@ -170,38 +176,43 @@ export const ContentPage: React.FC<ContentPageProps> = ({
           </div>
         ) : (
           <div className="cm g">
-            <div className="clist">
-              {L.map((c) => (
-                <div
-                  key={c.id}
-                  className={`cit ${c.id === sel ? 'on' : ''}`}
-                  onClick={() => setSel(c.id)}
-                >
-                  <div className="t">
-                    <span className="mono">{`#${c.id}`}</span>
-                    <span>·</span>
-                    <span>{`${c.p === 'li' ? 'LinkedIn' : 'X'} · ${c.type}`}</span>
-                    <span>·</span>
-                    <span>{`#${c.topic}`}</span>
+            <Skeleton isLoaded={isLoaded} className="w-full">
+              <div className="clist">
+                {L.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`cit ${c.id === sel ? 'on' : ''}`}
+                    onClick={() => setSel(c.id)}
+                  >
+                    <div className="t">
+                      <span className="mono">{`#${c.id}`}</span>
+                      <span>·</span>
+                      <span>{`${c.p === 'li' ? 'LinkedIn' : 'X'} · ${c.type}`}</span>
+                      <span>·</span>
+                      <span>{`#${c.topic}`}</span>
+                    </div>
+                    <TooltipTrigger delay={200}>
+                      <p className="line-clamp-2">{c.text}</p>
+                      <Tooltip size="sm">{c.text}</Tooltip>
+                    </TooltipTrigger>
+                    <div className="meta">
+                      <span>
+                        Views <b className="mono">{c.views}</b>
+                      </span>
+                      <span>
+                        Likes <b className="mono">{c.likes}</b>
+                      </span>
+                      <span>
+                        Replies <b className="mono">{c.replies}</b>
+                      </span>
+                      <span className="mono" style={{ color: 'var(--good)' }}>
+                        {`${c.eng.toFixed(2)}%`}
+                      </span>
+                    </div>
                   </div>
-                  <p>{c.text}</p>
-                  <div className="meta">
-                    <span>
-                      Views <b className="mono">{c.views}</b>
-                    </span>
-                    <span>
-                      Likes <b className="mono">{c.likes}</b>
-                    </span>
-                    <span>
-                      Replies <b className="mono">{c.replies}</b>
-                    </span>
-                    <span className="mono" style={{ color: 'var(--good)' }}>
-                      {`${c.eng.toFixed(2)}%`}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </Skeleton>
 
             {selectedItem && (
               <div className="tb" style={{ position: 'sticky', top: '10px' }}>
@@ -209,7 +220,24 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                 >
                   <b style={{ fontWeight: 600 }}>Inspection</b>
-                  <span className="muted mono" style={{ fontSize: '12px' }}>{`#${selectedItem.id}`}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <TooltipTrigger delay={100}>
+                      <button
+                        type="button"
+                        className="h-6 px-2 text-[11px] rounded border border-[var(--line)] bg-white hover:bg-neutral-100 flex items-center gap-1 cursor-pointer text-neutral-600"
+                        onClick={() => {
+                          if (selectedItem?.text) {
+                            navigator.clipboard?.writeText(selectedItem.text);
+                            toast.success('Copied to clipboard');
+                          }
+                        }}
+                      >
+                        Copy
+                      </button>
+                      <Tooltip size="sm">Copy post content to clipboard</Tooltip>
+                    </TooltipTrigger>
+                    <span className="muted mono" style={{ fontSize: '12px' }}>{`#${selectedItem.id}`}</span>
+                  </div>
                 </div>
                 <div style={{ marginTop: '10px' }}>
                   <span className="tag">{`${selectedItem.p === 'li' ? 'LinkedIn' : 'X'} · ${selectedItem.type}`}</span>{' '}
@@ -242,6 +270,9 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                     value={selectedItem.note}
                     onChange={(e) => {
                       selectedItem.note = e.target.value;
+                    }}
+                    onBlur={() => {
+                      toast.success('Strategic note saved');
                     }}
                   />
                 </div>

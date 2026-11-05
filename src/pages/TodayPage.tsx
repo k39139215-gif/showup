@@ -24,6 +24,9 @@ import {
   useCountTween,
 } from '../utils';
 import { useDateRangeStore } from '../store/dateStore';
+import { Skeleton } from '../components/base/skeleton/skeleton';
+import { Tooltip, TooltipTrigger } from '../components/base/tooltip/tooltip';
+import { useLoadingState } from '../hooks/useLoadingState';
 
 interface TodayPageProps {
   plat: string;
@@ -37,7 +40,11 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
     rangeLabel,
     dateSlice,
     isDateInCurrentRange,
+    start,
+    end,
   } = useDateRangeStore();
+
+  const isLoaded = useLoadingState([plat, rangeLabel, start, end]);
 
   const isSingle = mode === 'single' || daysCount === 1;
   const hasData = dateSlice.hasData;
@@ -179,7 +186,8 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
         </div>
       ) : (
         <>
-          <div className="g k4 mb transition-opacity duration-200">
+          <Skeleton isLoaded={isLoaded} className="w-full">
+            <div className="g k4 mb transition-opacity duration-200">
             <Tray icon="pen" title="Posts published">
               <div className="kv">
                 <span className="num mono">
@@ -235,6 +243,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
               <div className="ks">{isSingle ? 'Day targets' : 'Days meeting targets'}</div>
             </Tray>
           </div>
+          </Skeleton>
 
           <div className="g g2 mb transition-opacity duration-200">
             <Tray icon="trend" title="Activity trend">
@@ -326,12 +335,16 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
                 globalIdx >= dateSlice.startIndex && globalIdx <= dateSlice.endIndex;
 
               return (
-                <i
-                  key={`cell-${i}`}
-                  className={cl}
-                  style={!isInRange ? { opacity: 0.22, filter: 'grayscale(0.8)' } : undefined}
-                  title={`${fmtD(dayAt(globalIdx))}: ${a} actions`}
-                ></i>
+                <TooltipTrigger key={`cell-${i}`} delay={50}>
+                  <i
+                    className={cl}
+                    style={!isInRange ? { opacity: 0.22, filter: 'grayscale(0.8)' } : undefined}
+                    tabIndex={0}
+                    role="img"
+                    aria-label={`${fmtD(dayAt(globalIdx))}: ${a} actions`}
+                  ></i>
+                  <Tooltip size="sm">{`${fmtD(dayAt(globalIdx))}: ${a} actions`}</Tooltip>
+                </TooltipTrigger>
               );
             })}
           </div>

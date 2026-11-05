@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { G, Goals } from '../data';
 import { badge, Tray } from '../utils';
-import { SelectDropdown } from '../components/base/dropdown/SelectDropdown';
+import { BoardSelect } from '../components/base/select/BoardSelect';
+import { PillTabList, PillTab } from '../components/base/tabs/pill-tab';
+import { toast } from '../components/base/toast/toast';
 import { TIMEZONE_OPTIONS } from '../utils/dateMath';
 
 interface SettingsPageProps {
@@ -21,6 +23,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   const [saveMsg, setSaveMsg] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kolkata');
 
+  // URL-synced tab state (?tab=goals)
+  useEffect(() => {
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    if (urlTab && ['profile', 'goals', 'acct'].includes(urlTab) && urlTab !== tab) {
+      setTab(urlTab);
+    }
+  }, []);
+
+  const handleTabChange = (newTab: string) => {
+    setTab(newTab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', newTab);
+    window.history.replaceState({}, '', url.toString());
+  };
+
   const handleSave = () => {
     G.xp = Math.max(0, formG.xp || 0);
     G.xr = Math.max(0, formG.xr || 0);
@@ -28,6 +45,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
     G.lr = Math.max(0, formG.lr || 0);
     setSaveMsg('Saved. Today and Review now use the new targets.');
     onSaveTargets();
+
+    toast.success('Targets saved', {
+      description: 'Today and Review now use the new targets.',
+      duration: 4000,
+    });
   };
 
   const currentTabTitle = tabs.find((t) => t[0] === tab)?.[1] || 'Profile';
@@ -41,17 +63,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
         </div>
       </div>
 
-      <div className="seg tabs" id="tb">
-        {tabs.map(([k, t]) => (
-          <button
-            key={k}
-            data-k={k}
-            className={tab === k ? 'on' : undefined}
-            onClick={() => setTab(k)}
-          >
-            {t}
-          </button>
-        ))}
+      <div id="tb" className="tabs mb-4">
+        <PillTabList className="p-1 bg-[var(--tray)] rounded-xl border border-[var(--line)] inline-flex gap-1">
+          {tabs.map(([k, t]) => (
+            <PillTab
+              key={k}
+              variant="gray"
+              isSelected={tab === k}
+              onSelect={() => handleTabChange(k)}
+              className={tab === k ? 'on font-semibold' : ''}
+            >
+              {t}
+            </PillTab>
+          ))}
+        </PillTabList>
       </div>
 
       <div style={{ maxWidth: '820px' }}>
@@ -106,7 +131,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                 ))}
                 <label className="fld">
                   Timezone
-                  <SelectDropdown
+                  <BoardSelect
                     id="s_tz"
                     value={timezone}
                     onChange={setTimezone}

@@ -8,7 +8,10 @@ import { ReviewPage } from './pages/ReviewPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import { UnifiedDatePicker } from './components/UnifiedDatePicker';
-import { SelectDropdown } from './components/base/dropdown/SelectDropdown';
+import { BoardSelect } from './components/base/select/BoardSelect';
+import { BoardSegmentedControl } from './components/base/segmented-control/BoardSegmentedControl';
+import { Toaster, toast } from './components/base/toast/toast';
+import { Tooltip, TooltipTrigger } from './components/base/tooltip/tooltip';
 import { DateStoreProvider, useDateRangeStore } from './store/dateStore';
 
 const TITLES: Record<string, string> = {
@@ -120,11 +123,27 @@ const AppContent: React.FC = () => {
     const p = dialogPlat;
     const t = dialogType;
     const n = Math.max(1, dialogCount);
-    D[N - 1][p === 'x' ? (t === 'p' ? 'xp' : 'xr') : (t === 'p' ? 'lp' : 'lr')] += n;
+    const key = p === 'x' ? (t === 'p' ? 'xp' : 'xr') : (t === 'p' ? 'lp' : 'lr');
+    D[N - 1][key] += n;
     if (dialogRef.current) {
       dialogRef.current.close();
     }
     setTick((prev) => prev + 1);
+
+    toast.success('Activity added to today', {
+      description: `Added ${n} ${t === 'p' ? 'post' : 'reply'}${n > 1 ? 's' : ''} on ${p === 'x' ? 'X' : 'LinkedIn'}.`,
+      duration: 4000,
+      actions: [
+        {
+          label: 'Undo',
+          onClick: () => {
+            D[N - 1][key] = Math.max(0, D[N - 1][key] - n);
+            setTick((prev) => prev + 1);
+            toast.info('Action undone');
+          },
+        },
+      ],
+    });
   };
 
   const renderView = () => {
@@ -280,16 +299,19 @@ const AppContent: React.FC = () => {
             <b style={{ fontWeight: 500 }}>Kartik Sharma</b>
             <small>Asia/Kolkata</small>
           </div>
-          <button
-            id={isDrawer ? 'lo-drawer' : 'lo'}
-            title="Sign out"
-            onClick={() => {
-              window.location.hash = '#login';
-              if (isDrawer) setIsSidebarOpen(false);
-            }}
-          >
-            <Icon name="out" size={16} />
-          </button>
+          <TooltipTrigger delay={100}>
+            <button
+              id={isDrawer ? 'lo-drawer' : 'lo'}
+              title="Sign out"
+              onClick={() => {
+                window.location.hash = '#login';
+                if (isDrawer) setIsSidebarOpen(false);
+              }}
+            >
+              <Icon name="out" size={16} />
+            </button>
+            <Tooltip size="sm">Sign out</Tooltip>
+          </TooltipTrigger>
         </div>
       </div>
     </aside>
@@ -327,29 +349,17 @@ const AppContent: React.FC = () => {
             </div>
             <div className="tools">
               <UnifiedDatePicker />
-              <div className="seg" id="ps">
-                <button
-                  data-p="all"
-                  className={plat === 'all' ? 'on' : undefined}
-                  onClick={() => setPlat('all')}
-                >
-                  All
-                </button>
-                <button
-                  data-p="x"
-                  className={plat === 'x' ? 'on' : undefined}
-                  onClick={() => setPlat('x')}
-                >
-                  X
-                </button>
-                <button
-                  data-p="li"
-                  className={plat === 'li' ? 'on' : undefined}
-                  onClick={() => setPlat('li')}
-                >
-                  LinkedIn
-                </button>
-              </div>
+              <BoardSegmentedControl
+                id="ps"
+                value={plat}
+                onChange={setPlat}
+                options={[
+                  { value: 'all', label: 'All' },
+                  { value: 'x', label: 'X' },
+                  { value: 'li', label: 'LinkedIn' },
+                ]}
+                aria-label="Filter by platform"
+              />
               <button className="btn" id="add" onClick={handleOpenDialog}>
                 <Icon name="plus" size={15} />
                 Add activity
@@ -368,7 +378,7 @@ const AppContent: React.FC = () => {
         <h3 style={{ fontSize: '18px', letterSpacing: '-.02em' }}>Add activity</h3>
         <label className="fld">
           Platform
-          <SelectDropdown
+          <BoardSelect
             id="a_p"
             value={dialogPlat}
             onChange={setDialogPlat}
@@ -378,7 +388,7 @@ const AppContent: React.FC = () => {
         </label>
         <label className="fld">
           Type
-          <SelectDropdown
+          <BoardSelect
             id="a_t"
             value={dialogType}
             onChange={setDialogType}
@@ -445,6 +455,7 @@ export const App: React.FC = () => {
   return (
     <DateStoreProvider>
       <AppContent />
+      <Toaster position="bottom-end" duration={4000} />
     </DateStoreProvider>
   );
 };
