@@ -213,10 +213,10 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
             <button
               key={n}
               data-n={n}
-              className={n === rangeN ? 'on' : undefined}
+              className={n === rangeN ? 'on' : ''}
               onClick={() => setRangeN(n)}
             >
-              {n}d
+              {`${n}d`}
             </button>
           ))}
         </div>
@@ -272,7 +272,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
               <button
                 key={k}
                 data-m={k}
-                className={mt === k ? 'on' : undefined}
+                className={mt === k ? 'on' : ''}
                 onClick={() => setMt(k)}
               >
                 {t}
@@ -318,7 +318,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
         title="Platform direct comparison"
         right={
           <span className="muted mono" style={{ fontSize: '12px' }}>
-            last {rangeN} days
+            {`last ${rangeN} days`}
           </span>
         }
       >
