@@ -20,6 +20,7 @@ import { BoardSegmentedControl } from '../components/base/segmented-control/Boar
 import { Skeleton } from '../components/base/skeleton/skeleton';
 import { useLoadingState } from '../hooks/useLoadingState';
 import { CalendarDate } from '@internationalized/date';
+import { ActivityTrendChart } from '../components/ActivityTrendChart';
 import {
   Table,
   TableHeader,
@@ -191,6 +192,7 @@ export const LineChart: React.FC<LineChartProps> = ({
           y2={H - pb}
           stroke="#bdb9ae"
           strokeDasharray="3 4"
+          shapeRendering="crispEdges"
           opacity="0"
         />
         <circle
@@ -372,15 +374,20 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
   ];
 
 
-  const dvHtml = useMemo(() => {
-    if (!hasData) return '';
+  const recentVolumeData = useMemo(() => {
+    if (!hasData) return [];
     const slice = S.slice(-14);
     const startIdx = dateSlice.startIndex + (S.length - slice.length);
-    return dots(
-      slice.map((d) => pick(d, 'p', plat)),
-      slice.map((d) => pick(d, 'r', plat)),
-      slice.map((_, i) => dayAt(startIdx + i).getDate())
-    );
+    return slice.map((d, i) => {
+      const dateObj = dayAt(startIdx + i);
+      return {
+        posts: pick(d, 'p', plat),
+        replies: pick(d, 'r', plat),
+        label: dateObj.getDate(),
+        date: dateObj,
+        dateStr: fmtD(dateObj),
+      };
+    });
   }, [hasData, S, dateSlice.startIndex, plat]);
 
   return (
@@ -592,22 +599,22 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
             <Tray icon="today" title="Platform comparison">
               <Table aria-label="Platform performance comparison" size="sm" className="w-full text-[13px]">
                 <TableHeader>
-                  <TableColumn isRowHeader className="text-left font-medium p-2 text-neutral-500">Platform</TableColumn>
-                  <TableColumn className="text-right font-medium p-2 text-neutral-500">Posts</TableColumn>
-                  <TableColumn className="text-right font-medium p-2 text-neutral-500">Replies</TableColumn>
-                  <TableColumn className="text-right font-medium p-2 text-neutral-500">Total views</TableColumn>
-                  <TableColumn className="text-right font-medium p-2 text-neutral-500">Avg eng</TableColumn>
-                  <TableColumn className="text-right font-medium p-2 text-neutral-500">Best hour</TableColumn>
+                  <TableColumn isRowHeader className="text-left font-medium px-3 py-2.5 text-neutral-500">Platform</TableColumn>
+                  <TableColumn className="text-right font-medium px-3 py-2.5 text-neutral-500">Posts</TableColumn>
+                  <TableColumn className="text-right font-medium px-3 py-2.5 text-neutral-500">Replies</TableColumn>
+                  <TableColumn className="text-right font-medium px-3 py-2.5 text-neutral-500">Total views</TableColumn>
+                  <TableColumn className="text-right font-medium px-3 py-2.5 text-neutral-500">Avg eng</TableColumn>
+                  <TableColumn className="text-right font-medium px-3 py-2.5 text-neutral-500">Best hour</TableColumn>
                 </TableHeader>
                 <TableBody items={platformRows}>
                   {(item) => (
                     <TableRow key={item.id} className="border-b border-[var(--line)] hover:bg-[#faf9f6]">
-                      <TableCell className="p-2 font-medium">{item.platform}</TableCell>
-                      <TableCell className="p-2 text-right font-mono">{item.posts}</TableCell>
-                      <TableCell className="p-2 text-right font-mono">{item.replies}</TableCell>
-                      <TableCell className="p-2 text-right font-mono">{item.views}</TableCell>
-                      <TableCell className="p-2 text-right font-mono text-[var(--good)]">{item.eng}</TableCell>
-                      <TableCell className="p-2 text-right font-mono text-neutral-500">{item.bestHour}</TableCell>
+                      <TableCell className="px-3 py-2.5 text-left font-medium">{item.platform}</TableCell>
+                      <TableCell className="px-3 py-2.5 text-right font-mono tabular-nums">{item.posts}</TableCell>
+                      <TableCell className="px-3 py-2.5 text-right font-mono tabular-nums">{item.replies}</TableCell>
+                      <TableCell className="px-3 py-2.5 text-right font-mono tabular-nums">{item.views}</TableCell>
+                      <TableCell className="px-3 py-2.5 text-right font-mono tabular-nums text-[var(--good)]">{item.eng}</TableCell>
+                      <TableCell className="px-3 py-2.5 text-right font-mono tabular-nums text-neutral-500">{item.bestHour}</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -618,7 +625,9 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
               <p className="sub" style={{ margin: '0 0 10px' }}>
                 Distribution of posts vs outbound replies
               </p>
-              <div id="d2" dangerouslySetInnerHTML={{ __html: dvHtml }} />
+              <div id="d2">
+                <ActivityTrendChart data={recentVolumeData} />
+              </div>
               <div className="legend">
                 <span>
                   <i style={{ background: '#f26a1b' }}></i>Posts

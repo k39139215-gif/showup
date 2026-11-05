@@ -61,6 +61,9 @@ export function dots(P: number[], Rr: number[], L: (string | number)[]) {
     rows = 15,
     step = (W - 40) / n;
   let s = '';
+  const minLabelGap = 28;
+  const skipInterval = step < minLabelGap ? Math.ceil(minLabelGap / step) : 1;
+
   for (let i = 0; i < n; i++) {
     const x = 20 + i * step + step / 2 - 5,
       p = Math.min(P[i], 3),
@@ -70,7 +73,9 @@ export function dots(P: number[], Rr: number[], L: (string | number)[]) {
       const c = k < r ? '#161616' : k < r + p ? '#f26a1b' : '#ebe9e3';
       s += `<rect x="${x}" y="${y}" width="10" height="10" rx="2.5" fill="${c}"/>`;
     }
-    s += `<text x="${x + 5}" y="${H - 8}" text-anchor="middle" font-size="10.5" fill="#9b988f">${L[i]}</text>`;
+    if (i % skipInterval === 0) {
+      s += `<text x="${x + 5}" y="${H - 8}" text-anchor="middle" font-size="10.5" fill="#9b988f">${L[i]}</text>`;
+    }
   }
   return `<svg viewBox="0 0 ${W} ${H}" width="100%">${s}</svg>`;
 }

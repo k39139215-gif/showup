@@ -28,6 +28,8 @@ import { Skeleton } from '../components/base/skeleton/skeleton';
 import { Tooltip, TooltipTrigger } from '../components/base/tooltip/tooltip';
 import { Badge } from '../components/base/badges/badge';
 import { useLoadingState } from '../hooks/useLoadingState';
+import { ActivityTrendChart } from '../components/ActivityTrendChart';
+import { cx } from '../utils/cx';
 
 interface TodayPageProps {
   plat: string;
@@ -128,30 +130,38 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
   const lead = cells[0] ? (dayAt(N - 84).getDay() + 6) % 7 : 0;
   const lvl = (a: number) => (a === 0 ? '' : a <= 3 ? 'l1' : a <= 7 ? 'l2' : a <= 11 ? 'l3' : 'l4');
 
-  // Activity trend (cap at 60 points, aggregate by week above that)
-  const dotsHtml = useMemo(() => {
-    if (!hasData) return '';
+  // Activity trend data with non-overlapping labels & interactive hover points
+  const activityTrendData = useMemo(() => {
+    if (!hasData) return [];
     const slice = dateSlice.days;
     if (slice.length <= 60) {
-      return dots(
-        slice.map((cd) => pick(cd, 'p', plat)),
-        slice.map((cd) => pick(cd, 'r', plat)),
-        slice.map((_, i) => wd(dayAt(dateSlice.startIndex + i)))
-      );
+      return slice.map((cd, i) => {
+        const d = dayAt(dateSlice.startIndex + i);
+        return {
+          posts: pick(cd, 'p', plat),
+          replies: pick(cd, 'r', plat),
+          label: wd(d),
+          date: d,
+          dateStr: fmtD(d),
+        };
+      });
     }
     // Aggregate by week (7-day buckets)
     const weeksCount = Math.ceil(slice.length / 7);
-    const pArr: number[] = [];
-    const rArr: number[] = [];
-    const lArr: (string | number)[] = [];
+    const arr = [];
     for (let w = 0; w < weeksCount; w++) {
       const bucket = slice.slice(w * 7, (w + 1) * 7);
-      pArr.push(sum(bucket, (cd) => pick(cd, 'p', plat)));
-      rArr.push(sum(bucket, (cd) => pick(cd, 'r', plat)));
-      lArr.push(`W${w + 1}`);
+      const startD = dayAt(dateSlice.startIndex + w * 7);
+      const endD = dayAt(Math.min(dateSlice.startIndex + (w + 1) * 7 - 1, dateSlice.endIndex));
+      arr.push({
+        posts: sum(bucket, (cd) => pick(cd, 'p', plat)),
+        replies: sum(bucket, (cd) => pick(cd, 'r', plat)),
+        label: `W${w + 1}`,
+        dateStr: `${fmtD(startD)} - ${fmtD(endD)}`,
+      });
     }
-    return dots(pArr, rArr, lArr);
-  }, [hasData, dateSlice.days, dateSlice.startIndex, plat]);
+    return arr;
+  }, [hasData, dateSlice.days, dateSlice.startIndex, dateSlice.endIndex, plat]);
 
   // Recent content filtered to current range
   const recentContent = useMemo(() => {
@@ -251,7 +261,9 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
               <p className="sub" style={{ margin: '0 0 8px' }}>
                 {`Original posts and outbound replies (${daysCount} days)`}
               </p>
-              <div id="dc" dangerouslySetInnerHTML={{ __html: dotsHtml }} />
+              <div id="dc">
+                <ActivityTrendChart data={activityTrendData} />
+              </div>
               <div className="legend">
                 <span>
                   <i style={{ background: '#f26a1b' }}></i>Original posts
@@ -330,7 +342,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
               <span>Wed</span>
               <span>Fri</span>
             </div>
-            <div className="flex-1 overflow-x-auto">
+            <div className="flex-1 overflow-x-auto overflow-y-hidden p-0.5">
               <div className="flex justify-between text-[10px] font-mono text-[var(--mute)] px-1 mb-1 select-none">
                 <span>Aug</span>
                 <span>Sep</span>
@@ -343,21 +355,28 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
                 ))}
                 {cells.map((c, i) => {
                   const globalIdx = N - 84 + i;
-                  const a = pick(c, 'p', plat) + pick(c, 'r', plat);
+                  const pCount = pick(c, 'p', plat);
+                  const rCount = pick(c, 'r', plat);
+                  const a = pCount + rCount;
                   const cl = lvl(a);
                   const isInRange =
                     globalIdx >= dateSlice.startIndex && globalIdx <= dateSlice.endIndex;
 
                   return (
-                    <TooltipTrigger key={`cell-${i}`} delay={50}>
-                      <i
-                        className={cl}
+                    <TooltipTrigger key={`cell-${i}`} delay={0}>
+                      <button
+                        type="button"
+                        className={cx(cl, 'heat-cell block w-full h-full border-0 outline-none p-0 cursor-pointer')}
                         style={!isInRange ? { opacity: 0.22, filter: 'grayscale(0.8)' } : undefined}
-                        tabIndex={0}
-                        role="img"
                         aria-label={`${fmtD(dayAt(globalIdx))}: ${a} actions`}
-                      ></i>
-                      <Tooltip size="sm">{`${fmtD(dayAt(globalIdx))}: ${a} actions`}</Tooltip>
+                      />
+                      <Tooltip size="sm">
+                        <div className="font-mono text-[11.5px] text-center leading-tight">
+                          <div className="font-semibold text-white">{fmtD(dayAt(globalIdx))}</div>
+                          <div className="text-white/85 mt-0.5 font-medium">{pCount} posts · {rCount} replies</div>
+                          <div className="text-white/60 text-[10.5px]">({a} total actions)</div>
+                        </div>
+                      </Tooltip>
                     </TooltipTrigger>
                   );
                 })}
