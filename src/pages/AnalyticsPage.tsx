@@ -136,10 +136,8 @@ export const LineChart: React.FC<LineChartProps> = ({
     tip.style.left = `${(x(i) / W) * 100}%`;
     tip.style.top = `${(y(vals[i]) / H) * 100}%`;
 
-    const prevNote =
-      prevVals && prevVals[i] !== undefined
-        ? ` (prev: ${prevVals[i].toLocaleString()})`
-        : '';
+    const prevVal = prevVals && prevVals[i] !== undefined && prevVals[i] !== null ? prevVals[i] : null;
+    const prevNote = prevVal !== null ? ` (prev: ${prevVal.toLocaleString()})` : '';
     tip.textContent = `${labels[i]} · ${vals[i].toLocaleString()} ${unit}${prevNote}`;
   };
 

@@ -130,6 +130,28 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
   const lead = cells[0] ? (dayAt(N - 84).getDay() + 6) % 7 : 0;
   const lvl = (a: number) => (a === 0 ? '' : a <= 3 ? 'l1' : a <= 7 ? 'l2' : a <= 11 ? 'l3' : 'l4');
 
+  // Exact calendar month headers matching each column of the 12-week heatmap
+  const monthHeaders = useMemo(() => {
+    const numCols = Math.ceil((lead + cells.length) / 7);
+    const headers: (string | null)[] = [];
+    let lastMonth = -1;
+
+    for (let col = 0; col < numCols; col++) {
+      const cellIdx = col * 7 - lead;
+      const sampleIdx = Math.max(0, Math.min(cells.length - 1, cellIdx >= 0 ? cellIdx : 0));
+      const d = dayAt(N - 84 + sampleIdx);
+      const m = d.getMonth();
+      if (m !== lastMonth) {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        headers.push(monthNames[m]);
+        lastMonth = m;
+      } else {
+        headers.push(null);
+      }
+    }
+    return headers;
+  }, [lead, cells.length]);
+
   // Activity trend data with non-overlapping labels & interactive hover points
   const activityTrendData = useMemo(() => {
     if (!hasData) return [];
@@ -336,18 +358,37 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
           <p className="sub" style={{ margin: '0 0 10px' }}>
             {`Last 12 weeks · ${cells.filter((c) => acts(c) > 0).length} active days · selected range highlighted`}
           </p>
-          <div className="flex gap-2 items-start mt-2">
-            <div className="flex flex-col justify-between text-[9px] font-mono text-[var(--mute)] h-[90px] pt-4 select-none shrink-0">
-              <span>Mon</span>
-              <span>Wed</span>
-              <span>Fri</span>
+          <div className="flex gap-2 items-stretch mt-2">
+            <div className="flex flex-col shrink-0 select-none">
+              {/* Spacer matching month label header height */}
+              <div className="h-[18px]" />
+              {/* 7 rows matching the 7 rows of .heat */}
+              <div
+                className="grid gap-[4px] text-[10px] font-mono text-[var(--mute)] flex-1 pr-1"
+                style={{ gridTemplateRows: 'repeat(7, 1fr)' }}
+              >
+                <span className="flex items-center leading-none">Mon</span>
+                <span />
+                <span className="flex items-center leading-none">Wed</span>
+                <span />
+                <span className="flex items-center leading-none">Fri</span>
+                <span />
+                <span />
+              </div>
             </div>
             <div className="flex-1 overflow-x-auto overflow-y-hidden p-0.5">
-              <div className="flex justify-between text-[10px] font-mono text-[var(--mute)] px-1 mb-1 select-none">
-                <span>Aug</span>
-                <span>Sep</span>
-                <span>Oct</span>
-                <span>Nov</span>
+              <div
+                className="grid gap-[4px] text-[10px] font-mono text-[var(--mute)] h-[18px] mb-1 select-none"
+                style={{
+                  gridTemplateColumns: `repeat(${monthHeaders.length}, 1fr)`,
+                  padding: '0 2px',
+                }}
+              >
+                {monthHeaders.map((m, idx) => (
+                  <span key={idx} className="truncate leading-tight">
+                    {m || ''}
+                  </span>
+                ))}
               </div>
               <div className="heat" style={{ marginTop: 0 }}>
                 {Array.from({ length: lead }, (_, i) => (

@@ -11,8 +11,8 @@ export function rng(a: number) {
 export const R = rng(7);
 export const ri = (a: number, b: number) => a + Math.floor(R() * (b - a + 1));
 
-export const N = 90;
-export const TODAY = new Date();
+export const N = 240;
+export const TODAY = new Date(2026, 10, 5); // Fixed app baseline: Nov 5, 2026
 TODAY.setHours(0, 0, 0, 0);
 
 export const dayAt = (i: number) => {
