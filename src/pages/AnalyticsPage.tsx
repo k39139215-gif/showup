@@ -12,6 +12,7 @@ import {
   dots,
   smooth,
   line,
+  getNiceScale,
   Tray,
   Icon,
 } from '../utils';
@@ -71,15 +72,18 @@ export const LineChart: React.FC<LineChartProps> = ({
   const pt = 14;
   const pb = 28;
   const allVals = prevVals && prevVals.length > 0 ? [...vals, ...prevVals] : vals;
-  const max = Math.max(...allVals, 1) * 1.15;
+  const rawMax = Math.max(...allVals, 1);
+  const isInteger = unit === 'replies' || unit === 'posts';
+  const scale = getNiceScale(rawMax, 4, isInteger);
+  const max = scale.max;
   const m = Math.max(vals.length - 1, 1);
 
   const x = (i: number) => pl + (i * (W - pl - pr)) / m;
   const y = (v: number) => H - pb - (v / max) * (H - pt - pb);
   const pts: [number, number][] = vals.map((v, i) => [x(i), y(v)]);
 
-  const gridLines = Array.from({ length: 5 }, (_, i) => {
-    const yy = pt + (i * (H - pt - pb)) / 4;
+  const gridLines = scale.ticks.map((tickVal, i) => {
+    const yy = y(tickVal);
     return (
       <React.Fragment key={i}>
         <line
@@ -97,7 +101,7 @@ export const LineChart: React.FC<LineChartProps> = ({
           fontSize="10.5"
           fill="#9b988f"
         >
-          {fmtK(max * (1 - i / 4))}
+          {fmtK(tickVal)}
         </text>
       </React.Fragment>
     );
@@ -132,13 +136,30 @@ export const LineChart: React.FC<LineChartProps> = ({
     cd.setAttribute('cx', String(x(i)));
     cd.setAttribute('cy', String(y(vals[i])));
     cl.style.opacity = cd.style.opacity = '1';
-    tip.style.opacity = '1';
-    tip.style.left = `${(x(i) / W) * 100}%`;
-    tip.style.top = `${(y(vals[i]) / H) * 100}%`;
 
     const prevVal = prevVals && prevVals[i] !== undefined && prevVals[i] !== null ? prevVals[i] : null;
     const prevNote = prevVal !== null ? ` (prev: ${prevVal.toLocaleString()})` : '';
     tip.textContent = `${labels[i]} · ${vals[i].toLocaleString()} ${unit}${prevNote}`;
+    tip.style.opacity = '1';
+
+    // Edge-aware horizontal transform so tooltip never clips or extends outside the card
+    const xRatio = x(i) / W;
+    let shiftX = -50;
+    if (xRatio > 0.75) {
+      // Near right edge: smoothly shift anchor left from -50% to -95%
+      shiftX = -50 - ((xRatio - 0.75) / 0.25) * 45;
+    } else if (xRatio < 0.25) {
+      // Near left edge: smoothly shift anchor right from -50% to -5%
+      shiftX = -50 + ((0.25 - xRatio) / 0.25) * 45;
+    }
+
+    // Edge-aware vertical transform so tooltip never clips outside the top
+    const yRatio = y(vals[i]) / H;
+    const shiftY = yRatio < 0.2 ? 35 : -125;
+
+    tip.style.left = `${xRatio * 100}%`;
+    tip.style.top = `${yRatio * 100}%`;
+    tip.style.transform = `translate(${shiftX}%, ${shiftY}%)`;
   };
 
   const handleMouseLeave = () => {
@@ -286,6 +307,21 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
       };
     });
   }, [S, L, plat]);
+
+  const comboScales = useMemo(() => {
+    const maxImp = Math.max(...comboData.map((d) => d.impressions), 1);
+    const leftScale = getNiceScale(maxImp, 4, true);
+
+    const maxEng = Math.max(...comboData.map((d) => d.engRate), 0.5);
+    const rightScale = getNiceScale(maxEng, 4, false);
+
+    return {
+      leftMax: leftScale.max,
+      leftTicks: leftScale.ticks.slice().reverse(),
+      rightMax: rightScale.max,
+      rightTicks: rightScale.ticks.slice().reverse(),
+    };
+  }, [comboData]);
 
   const weekdayStats = useMemo(() => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -544,6 +580,8 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
                     />
                     <YAxis
                       yAxisId="left"
+                      domain={[0, comboScales.leftMax]}
+                      ticks={comboScales.leftTicks}
                       tick={{ fontSize: 10.5, fill: '#9b988f' }}
                       tickLine={false}
                       axisLine={false}
@@ -552,6 +590,8 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({
                     <YAxis
                       yAxisId="right"
                       orientation="right"
+                      domain={[0, comboScales.rightMax]}
+                      ticks={comboScales.rightTicks}
                       tick={{ fontSize: 10.5, fill: '#0e9f6e' }}
                       tickLine={false}
                       axisLine={false}

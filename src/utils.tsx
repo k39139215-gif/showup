@@ -38,8 +38,52 @@ export const Icon: React.FC<{ name: string; size?: number }> = ({ name, size = 1
   />
 );
 
-export const fmtK = (n: number) =>
-  n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(Math.round(n));
+export const fmtK = (n: number) => {
+  if (n >= 1000) {
+    const v = n / 1000;
+    const formatted = v.toFixed(2).replace(/\.?0+$/, '');
+    return `${formatted}k`;
+  }
+  return String(Math.round(n));
+};
+
+export function getNiceScale(rawMax: number, targetIntervals = 4, isInteger = false): {
+  max: number;
+  step: number;
+  ticks: number[];
+} {
+  if (rawMax <= 0) {
+    const max = isInteger ? 4 : 4;
+    const step = 1;
+    return { max, step, ticks: Array.from({ length: 5 }, (_, i) => max - i * step) };
+  }
+
+  const roughStep = rawMax / targetIntervals;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const normalized = roughStep / magnitude;
+
+  let niceFactor = 1;
+  if (normalized <= 1) niceFactor = 1;
+  else if (normalized <= 1.5) niceFactor = 1.5;
+  else if (normalized <= 2) niceFactor = 2;
+  else if (normalized <= 2.5) niceFactor = 2.5;
+  else if (normalized <= 5) niceFactor = 5;
+  else niceFactor = 10;
+
+  let step = niceFactor * magnitude;
+  if (isInteger && step < 1) step = 1;
+
+  let max = step * targetIntervals;
+  while (max < rawMax) {
+    max += step;
+  }
+
+  // Generate descending ticks: [max, max - step, ..., 0]
+  const tickCount = Math.round(max / step) + 1;
+  const ticks = Array.from({ length: tickCount }, (_, i) => Math.round((max - i * step) * 1000) / 1000);
+
+  return { max, step, ticks };
+}
 
 export const fmtD = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 export const wd = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short' });

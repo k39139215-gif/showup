@@ -193,33 +193,43 @@ export const ActivityTrendChart: React.FC<ActivityTrendChartProps> = ({ data, cl
         />
       </svg>
 
-      {/* Floating Tooltip Card matching Image 2: locks synchronously to hovered coordinates */}
-      {hoveredItem && (
-        <div
-          className="absolute pointer-events-none z-30 -translate-x-1/2 -translate-y-full mb-3.5 transition-opacity duration-150 animate-in fade-in"
-          style={{
-            left: `${(hoveredX / W) * 100}%`,
-            top: `${(Math.max(hoveredTopY - 10, 16) / H) * 100}%`,
-          }}
-        >
-          <div className="bg-white/95 backdrop-blur-sm border border-[var(--line)] shadow-[0_4px_16px_rgba(0,0,0,0.1)] rounded-xl px-3 py-1.5 whitespace-nowrap text-center">
-            <span className="font-mono text-[12px] font-medium text-[var(--ink)]">
-              {hoveredItem.dateStr || (hoveredItem.date ? fmtD(hoveredItem.date) : hoveredItem.label)}
-            </span>
-            <span className="text-[var(--mute)] mx-1.5 font-mono text-[12px]">·</span>
-            <span className="font-mono text-[12px] text-[#f26a1b] font-semibold">
-              {hoveredItem.posts} {hoveredItem.posts === 1 ? 'post' : 'posts'}
-            </span>
-            <span className="text-[var(--mute)] mx-1 font-mono text-[12px]">,</span>
-            <span className="font-mono text-[12px] text-[#161616] font-semibold">
-              {hoveredItem.replies} {hoveredItem.replies === 1 ? 'reply' : 'replies'}
-            </span>
-            <span className="text-[var(--mute)] font-mono text-[11px] ml-1.5">
-              ({hoveredItem.posts + hoveredItem.replies} total)
-            </span>
+      {/* Floating Tooltip Card: locks synchronously to hovered coordinates and stays within bounds */}
+      {hoveredItem && (() => {
+        const xRatio = hoveredX / W;
+        let shiftX = -50;
+        if (xRatio > 0.78) {
+          shiftX = -50 - ((xRatio - 0.78) / 0.22) * 45;
+        } else if (xRatio < 0.22) {
+          shiftX = -50 + ((0.22 - xRatio) / 0.22) * 45;
+        }
+        return (
+          <div
+            className="absolute pointer-events-none z-30 mb-3.5 transition-opacity duration-150 animate-in fade-in"
+            style={{
+              left: `${xRatio * 100}%`,
+              top: `${(Math.max(hoveredTopY - 10, 16) / H) * 100}%`,
+              transform: `translate(${shiftX}%, -100%)`,
+            }}
+          >
+            <div className="bg-white/95 backdrop-blur-sm border border-[var(--line)] shadow-[0_4px_16px_rgba(0,0,0,0.1)] rounded-xl px-3 py-1.5 whitespace-nowrap text-center">
+              <span className="font-mono text-[12px] font-medium text-[var(--ink)]">
+                {hoveredItem.dateStr || (hoveredItem.date ? fmtD(hoveredItem.date) : hoveredItem.label)}
+              </span>
+              <span className="text-[var(--mute)] mx-1.5 font-mono text-[12px]">·</span>
+              <span className="font-mono text-[12px] text-[#f26a1b] font-semibold">
+                {hoveredItem.posts} {hoveredItem.posts === 1 ? 'post' : 'posts'}
+              </span>
+              <span className="text-[var(--mute)] mx-1 font-mono text-[12px]">,</span>
+              <span className="font-mono text-[12px] text-[#161616] font-semibold">
+                {hoveredItem.replies} {hoveredItem.replies === 1 ? 'reply' : 'replies'}
+              </span>
+              <span className="text-[var(--mute)] font-mono text-[11px] ml-1.5">
+                ({hoveredItem.posts + hoveredItem.replies} total)
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
