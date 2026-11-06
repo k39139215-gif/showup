@@ -21,13 +21,23 @@ export const ActivityTrendChart: React.FC<ActivityTrendChartProps> = ({ data, cl
   const n = data.length;
   const W = 600;
   const H = 230;
-  const base = 196;
-  const ch = 13;
   const rows = 15;
-  const step = n > 0 ? (W - 40) / n : 0;
+  const padX = 20;
+  const usableW = W - padX * 2;
+  const step = n > 0 ? usableW / n : 0;
 
-  // Ensure day labels never overlap: calculate minimum gap required
-  const minLabelGap = 28;
+  // Dynamically compute dot dimensions and spacing so dots never touch or overlap at any range (7d, 14d, 30d, 60d, 84d)
+  const isLargeRange = n > 32;
+  const dotW =
+    n <= 20 ? 10 : n <= 32 ? 9.5 : n <= 45 ? 7.5 : n <= 65 ? 5.5 : Math.max(3.8, Math.floor(step * 0.65));
+  const dotH =
+    n <= 20 ? 10 : n <= 32 ? 9.5 : n <= 45 ? 8 : n <= 65 ? 6.5 : Math.max(4.5, Math.floor(dotW * 1.15));
+  const dotRx = Math.max(1.2, Math.min(2.5, dotW * 0.25));
+  const ch = n <= 20 ? 13 : n <= 32 ? 12.5 : n <= 45 ? 10.5 : n <= 65 ? 9 : 7.5;
+  const base = 196;
+
+  // Ensure milestone date labels never overlap: calculate minimum gap required
+  const minLabelGap = isLargeRange ? 44 : 28;
   const skipInterval = step < minLabelGap ? Math.ceil(minLabelGap / step) : 1;
 
   const handleMouseMove = useCallback(
@@ -36,7 +46,7 @@ export const ActivityTrendChart: React.FC<ActivityTrendChartProps> = ({ data, cl
       if (!svg || n === 0) return;
       const rect = svg.getBoundingClientRect();
       const mouseX = ((e.clientX - rect.left) / rect.width) * W;
-      const colIdx = Math.floor((mouseX - 20) / step);
+      const colIdx = Math.floor((mouseX - padX) / step);
       const clampedIdx = Math.max(0, Math.min(n - 1, colIdx));
 
       if (mouseX >= 10 && mouseX <= W - 10) {
@@ -45,7 +55,7 @@ export const ActivityTrendChart: React.FC<ActivityTrendChartProps> = ({ data, cl
         setHoveredIdx((prev) => (prev === null ? null : null));
       }
     },
-    [n, step, W]
+    [n, step, W, padX]
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -53,8 +63,8 @@ export const ActivityTrendChart: React.FC<ActivityTrendChartProps> = ({ data, cl
   }, []);
 
   const hoveredItem = hoveredIdx !== null ? data[hoveredIdx] : null;
-  // Snap hoveredX to an integer for crisp, jitter-free line rendering
-  const hoveredX = hoveredIdx !== null ? Math.round(20 + hoveredIdx * step + step / 2) : 0;
+  // Snap hoveredX to integer for crisp, jitter-free line rendering
+  const hoveredX = hoveredIdx !== null ? Math.round(padX + hoveredIdx * step + step / 2) : 0;
 
   // Calculate top of the hovered stack for circle indicator
   let hoveredTopY = base;
@@ -64,6 +74,15 @@ export const ActivityTrendChart: React.FC<ActivityTrendChartProps> = ({ data, cl
     const totalFilled = p + r;
     hoveredTopY = Math.round(base - totalFilled * ch);
   }
+
+  const getLabelText = (item: ActivityTrendPoint) => {
+    if (isLargeRange && item.date) {
+      const d = item.date;
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${d.getDate()} ${monthNames[d.getMonth()]}`;
+    }
+    return String(item.label);
+  };
 
   return (
     <div className={`relative w-full select-none ${className || ''}`} onMouseLeave={handleMouseLeave}>
@@ -75,33 +94,33 @@ export const ActivityTrendChart: React.FC<ActivityTrendChartProps> = ({ data, cl
       >
         {/* Render columns of dots */}
         {data.map((item, i) => {
-          const colCenterX = 20 + i * step + step / 2;
-          const x = Math.round(colCenterX - 5);
+          const colCenterX = padX + i * step + step / 2;
+          const x = Math.round(colCenterX - dotW / 2);
           const p = Math.min(item.posts, 3);
           const r = Math.min(item.replies, rows - p);
           const isHovered = hoveredIdx === i;
 
           const rects = [];
           for (let k = 0; k < rows; k++) {
-            const y = base - (k + 1) * ch + 3;
+            const y = Math.round(base - (k + 1) * ch + (ch - dotH));
             const c = k < r ? '#161616' : k < r + p ? '#f26a1b' : '#ebe9e3';
             rects.push(
               <rect
                 key={k}
                 x={x}
                 y={y}
-                width={10}
-                height={10}
-                rx={2.5}
+                width={dotW}
+                height={dotH}
+                rx={dotRx}
                 fill={c}
                 opacity={isHovered ? 1 : 0.9}
-                filter={isHovered ? 'brightness(1.06)' : undefined}
+                filter={isHovered ? 'brightness(1.08)' : undefined}
                 className="pointer-events-none transition-[filter,opacity] duration-100"
               />
             );
           }
 
-          // Day label with overlap prevention: strict interval spacing ensures labels never collide
+          // Strict interval spacing ensures labels never collide
           const showLabel = i % skipInterval === 0;
 
           return (
@@ -109,11 +128,11 @@ export const ActivityTrendChart: React.FC<ActivityTrendChartProps> = ({ data, cl
               {/* Soft hover column highlight background track without moving layout */}
               {isHovered && (
                 <rect
-                  x={x - 2}
-                  y={base - rows * ch + 1}
-                  width={14}
-                  height={rows * ch + 4}
-                  rx={4}
+                  x={Math.round(colCenterX - (dotW + 4) / 2)}
+                  y={Math.round(base - rows * ch)}
+                  width={Math.round(dotW + 4)}
+                  height={Math.round(rows * ch + 4)}
+                  rx={Math.max(2, dotRx + 1)}
                   fill="rgba(0, 0, 0, 0.04)"
                 />
               )}
@@ -123,19 +142,19 @@ export const ActivityTrendChart: React.FC<ActivityTrendChartProps> = ({ data, cl
                   x={colCenterX}
                   y={H - 8}
                   textAnchor="middle"
-                  fontSize="10.5"
+                  fontSize={isLargeRange ? '9.5' : '10.5'}
                   fontWeight={isHovered ? '600' : '400'}
                   fill={isHovered ? '#161616' : '#9b988f'}
                   className="font-sans select-none"
                 >
-                  {item.label}
+                  {getLabelText(item)}
                 </text>
               )}
             </g>
           );
         })}
 
-        {/* Hover elements: cursor line and circle marker matching Image 2 */}
+        {/* Hover elements: cursor line and circle marker */}
         {hoveredIdx !== null && (
           <g className="pointer-events-none">
             {/* Vertical dashed guide line with crispEdges to eliminate any subpixel shaking */}

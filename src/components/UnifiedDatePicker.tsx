@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { CalendarDate } from '@internationalized/date';
 import {
   RiCalendarLine,
@@ -132,19 +132,68 @@ export const UnifiedDatePicker: React.FC = () => {
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  // Track viewport width for responsive layouts
+  // Track viewport width and geometry for popover clamping & collision prevention
   const [viewportWidth, setViewportWidth] = useState<number>(
     typeof window !== 'undefined' ? window.innerWidth : 1440
   );
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
-  useEffect(() => {
-    const handleResize = () => setViewportWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+  const updatePopoverGeometry = useCallback(() => {
+    const vWidth = typeof window !== 'undefined' ? window.innerWidth : 1440;
+    const vHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
+    setViewportWidth(vWidth);
+
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const isSidebarVisible = vWidth >= 1100;
+    const minLeft = (isSidebarVisible ? 260 : 0) + 16;
+    const maxRight = vWidth - 16;
+    const availableContentWidth = Math.max(300, maxRight - minLeft);
+
+    const showDual = availableContentWidth >= 880;
+    const popoverW = showDual ? 880 : Math.min(520, availableContentWidth);
+
+    const top = Math.min(rect.bottom + 8, vHeight - 80);
+    // Align to the right edge of the trigger button, but clamp strictly so:
+    // left is NEVER less than minLeft (sidebar boundary),
+    // and right is NEVER greater than maxRight (window right edge)!
+    let targetLeft = rect.right - popoverW;
+    if (targetLeft < minLeft) {
+      targetLeft = minLeft;
+    }
+    if (targetLeft + popoverW > maxRight) {
+      targetLeft = maxRight - popoverW;
+    }
+    targetLeft = Math.max(minLeft, targetLeft);
+
+    setPopoverPos({
+      top: Math.round(top),
+      left: Math.round(targetLeft),
+      width: Math.round(popoverW),
+    });
   }, []);
 
-  const isDesktop = viewportWidth >= 1100;
-  const isMobile = viewportWidth < 640;
+  useEffect(() => {
+    const handleResize = () => updatePopoverGeometry();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [updatePopoverGeometry]);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePopoverGeometry();
+      window.addEventListener('scroll', updatePopoverGeometry, true);
+      return () => {
+        window.removeEventListener('scroll', updatePopoverGeometry, true);
+      };
+    }
+  }, [isOpen, updatePopoverGeometry]);
+
+  const isSidebarVisible = viewportWidth >= 1100;
+  const availableContentWidth = Math.max(300, viewportWidth - (isSidebarVisible ? 260 : 0) - 32);
+  const isMobile = viewportWidth < 640 || availableContentWidth < 460;
+  const isDualMonth = availableContentWidth >= 880;
+  const showPresetColumn = !isMobile && availableContentWidth >= 500;
 
   // Draft state inside popover
   const [draftMode, setDraftMode] = useState<'single' | 'range'>(mode);
@@ -523,18 +572,20 @@ export const UnifiedDatePicker: React.FC = () => {
           role="dialog"
           aria-label="Date range calendar"
           className={cx(
-            'boardui-calendar-popover absolute z-[130] bg-white border border-[var(--line)] shadow-[var(--shadow-dropdown)] outline-none',
+            'boardui-calendar-popover z-[130] bg-white border border-[var(--line)] shadow-[var(--shadow-dropdown)] outline-none',
             isMobile
               ? '!fixed !inset-x-0 !bottom-0 !top-auto !mt-0 !rounded-t-2xl !rounded-b-none !w-full max-h-[90dvh] overflow-y-auto'
-              : 'top-full mt-2 right-0 rounded-2xl flex flex-col overflow-hidden'
+              : 'fixed rounded-2xl flex flex-col overflow-hidden'
           )}
           style={
             isMobile
               ? undefined
               : {
-                  width: isDesktop ? '880px' : '640px',
-                  maxHeight: 'min(640px, calc(100dvh - 96px))',
-                  maxWidth: 'calc(100vw - 24px)',
+                  top: `${popoverPos?.top ?? 64}px`,
+                  left: `${popoverPos?.left ?? (isSidebarVisible ? 276 : 16)}px`,
+                  width: `${popoverPos?.width ?? (isDualMonth ? 880 : 520)}px`,
+                  maxHeight: 'min(640px, calc(100dvh - 80px))',
+                  maxWidth: 'calc(100vw - 32px)',
                 }
           }
         >
@@ -564,8 +615,8 @@ export const UnifiedDatePicker: React.FC = () => {
             <CloseButton size="md" aria-label="Close calendar" onClick={handleCancel} />
           </div>
 
-          {/* If tablet/mobile (< 1100px): Presets as horizontal chip row above calendar */}
-          {!isDesktop && (
+          {/* If tablet/mobile or compact mode where preset column cannot fit: Presets as horizontal chip row */}
+          {!showPresetColumn && (
             <div
               className="px-4 py-2 border-b border-[var(--line)] flex flex-row items-center gap-1.5 overflow-x-auto shrink-0 bg-[#fbfbfa]"
               role="listbox"
@@ -595,10 +646,10 @@ export const UnifiedDatePicker: React.FC = () => {
             </div>
           )}
 
-          {/* Main Body: Presets Left Column (Desktop) + Calendar Area + Optional Time Sidebar */}
+          {/* Main Body: Presets Left Column (Desktop & Compact) + Calendar Area + Optional Time Sidebar */}
           <div className="flex flex-row flex-1 overflow-hidden min-h-0">
-            {/* Desktop Left Column: 176px Preset Column */}
-            {isDesktop && (
+            {/* Presets Left Column (Desktop & Compact Desktop): 176px Preset Column */}
+            {showPresetColumn && (
               <div
                 className="w-[176px] shrink-0 border-r border-[var(--line)] p-3 flex flex-col overflow-y-auto"
                 style={{ maxHeight: '420px' }}
@@ -664,7 +715,7 @@ export const UnifiedDatePicker: React.FC = () => {
                       {monthsTitle[visibleMonth.month - 1]} {visibleMonth.year}
                     </span>
                     {/* If single month view, show Next button here */}
-                    {!isDesktop && (
+                    {!isDualMonth && (
                       <button
                         type="button"
                         className="size-8 absolute right-0 top-1 rounded-lg flex items-center justify-center text-[var(--mute)] hover:bg-[#f5f4ef] border-0 cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-border-focus-ring"
@@ -693,13 +744,13 @@ export const UnifiedDatePicker: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 1px Vertical Divider between months on Desktop */}
-                {isDesktop && (
+                {/* 1px Vertical Divider between months on Dual View */}
+                {isDualMonth && (
                   <div className="w-[1px] bg-[var(--line)] self-stretch" />
                 )}
 
-                {/* Month 2: 308px (Desktop dual view only) */}
-                {isDesktop && (
+                {/* Month 2: 308px (Dual view only) */}
+                {isDualMonth && (
                   <div className="w-[308px] shrink-0 flex flex-col">
                     {/* Month 2 Header: IDENTICAL 40px row */}
                     <div className="h-[40px] relative flex items-center justify-center mb-1">
@@ -858,7 +909,7 @@ export const UnifiedDatePicker: React.FC = () => {
                   />
                 </>
               )}
-              <span className="pill nu text-[12px] font-mono whitespace-nowrap">
+              <span className={cx('pill nu text-[12px] font-mono whitespace-nowrap', !isDualMonth && 'hidden sm:inline-flex')}>
                 {draftDaysCount} {draftDaysCount === 1 ? 'day' : 'days'} selected
               </span>
             </div>
