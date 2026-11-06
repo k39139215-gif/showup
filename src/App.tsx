@@ -25,6 +25,13 @@ import { Drawer } from './components/base/drawer/drawer';
 import { Modal } from './components/base/modal/modal';
 import { NumberField } from './components/base/number-field/number-field';
 import { DateStoreProvider, useDateRangeStore } from './store/dateStore';
+import { ImportXModal } from './components/ImportXModal';
+import { XImportResult } from './services/xSyncService';
+import {
+  upsertDailyActivity,
+  syncSupabaseToMemory,
+  subscribeToDailyActivity,
+} from './services/activityService';
 
 const TITLES: Record<string, string> = {
   today: 'Today',
@@ -77,11 +84,22 @@ const AppContent: React.FC = () => {
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
+  const [isImportXOpen, setIsImportXOpen] = useState<boolean>(false);
   const [dialogPlat, setDialogPlat] = useState<string>('x');
   const [dialogType, setDialogType] = useState<string>('p');
   const [dialogCount, setDialogCount] = useState<number>(1);
 
   useEffect(() => {
+    // Initial fetch from Supabase
+    syncSupabaseToMemory().then((hasData) => {
+      if (hasData) setTick((t) => t + 1);
+    });
+
+    // Realtime WebSocket listener: triggers live UI update on any insert/update
+    const unsubscribe = subscribeToDailyActivity(() => {
+      syncSupabaseToMemory().then(() => setTick((t) => t + 1));
+    });
+
     const handleHashChange = () => {
       const newRoute = getHashRoute();
       setRoute(newRoute);
@@ -107,6 +125,7 @@ const AppContent: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
+      unsubscribe();
       window.removeEventListener('hashchange', handleHashChange);
       window.removeEventListener('keydown', handleKeyDown);
     };
@@ -124,8 +143,8 @@ const AppContent: React.FC = () => {
     setIsDialogOpen(false);
   };
 
-  const handleAddActivity = () => {
-    const p = dialogPlat;
+  const handleAddActivity = async () => {
+    const p = dialogPlat as 'x' | 'li';
     const t = dialogType;
     const n = Math.max(1, dialogCount);
     const key = p === 'x' ? (t === 'p' ? 'xp' : 'xr') : (t === 'p' ? 'lp' : 'lr');
@@ -133,19 +152,26 @@ const AppContent: React.FC = () => {
     setIsDialogOpen(false);
     setTick((prev) => prev + 1);
 
-    toast.success('Activity added to today', {
-      description: `Added ${n} ${t === 'p' ? 'post' : 'reply'}${n > 1 ? 's' : ''} on ${p === 'x' ? 'X' : 'LinkedIn'}.`,
+    // Save real activity into Supabase
+    const todayStr = new Date().toISOString().slice(0, 10);
+    await upsertDailyActivity({
+      date: todayStr,
+      platform: p,
+      posts: t === 'p' ? n : 0,
+      replies: t === 'r' ? n : 0,
+    });
+
+    toast.success('Activity saved', {
+      description: `Recorded ${n} ${t === 'p' ? 'post' : 'reply'}${n > 1 ? 's' : ''} on ${p === 'x' ? 'X' : 'LinkedIn'}.`,
       duration: 4000,
-      actions: [
-        {
-          label: 'Undo',
-          onClick: () => {
-            D[N - 1][key] = Math.max(0, D[N - 1][key] - n);
-            setTick((prev) => prev + 1);
-            toast.info('Action undone');
-          },
-        },
-      ],
+    });
+  };
+
+  const handleImportXSuccess = (result: XImportResult) => {
+    setTick((prev) => prev + 1);
+    toast.success('X Analytics Imported', {
+      description: `Imported ${result.importedPosts} real posts across ${result.daysCount} days (${result.totalViews.toLocaleString()} views, ${result.totalReplies.toLocaleString()} replies).`,
+      duration: 5000,
     });
   };
 
@@ -382,6 +408,15 @@ const AppContent: React.FC = () => {
                 ]}
                 aria-label="Filter by platform"
               />
+              <button
+                className="btn btn-secondary flex items-center gap-1.5"
+                id="btn-import-x"
+                onClick={() => setIsImportXOpen(true)}
+                title="Import real analytics from X (CSV)"
+              >
+                <Icon name="upload" size={15} />
+                Import X
+              </button>
               <button className="btn" id="add" onClick={handleOpenDialog}>
                 <Icon name="plus" size={15} />
                 Add activity
@@ -474,6 +509,12 @@ const AppContent: React.FC = () => {
           </button>
         </menu>
       </Modal>
+
+      <ImportXModal
+        isOpen={isImportXOpen}
+        onClose={() => setIsImportXOpen(false)}
+        onSuccess={handleImportXSuccess}
+      />
 
       <CommandPalette
         isOpen={isCommandPaletteOpen}

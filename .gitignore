@@ -4,3 +4,6 @@ test-results
 screenshots
 diffs
 .vite
+.env
+.env.local
+.env.*.local
