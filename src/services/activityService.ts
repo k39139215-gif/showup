@@ -148,7 +148,13 @@ export function subscribeToDailyActivity(onChange: () => void) {
 export async function syncSupabaseToMemory(): Promise<boolean> {
   try {
     const { data, error } = await supabase.from('activity_daily').select('*');
-    if (error || !data || data.length === 0) return false;
+    if (error || !data || data.length === 0) {
+      for (let i = 0; i < N; i++) {
+        D[i] = { xp: 0, xr: 0, lp: 0, lr: 0, xv: 0, li: 0, xl: 0, ll: 0 };
+      }
+      CT.length = 0;
+      return false;
+    }
 
     const map = new Map<string, any>();
     data.forEach((row: DbDailyActivity) => {
