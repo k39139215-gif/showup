@@ -1,5 +1,6 @@
 import { supabase, DbDailyActivity, DbPost, DbGoal } from '../lib/supabase';
-import { D, N, dayAt } from '../data';
+import { D, N, dayAt, CT } from '../data';
+import { formatLocalDate } from '../utils/dateMath';
 
 export interface DayRecord {
   date: string;
@@ -168,12 +169,60 @@ export async function syncSupabaseToMemory(): Promise<boolean> {
 
     let matched = 0;
     for (let i = 0; i < N; i++) {
-      const dateStr = dayAt(i).toISOString().slice(0, 10);
+      const dateStr = formatLocalDate(dayAt(i));
       if (map.has(dateStr)) {
         Object.assign(D[i], map.get(dateStr));
         matched++;
       }
     }
+
+    // Sync posts into CT
+    const { data: postsData } = await supabase
+      .from('posts')
+      .select('*')
+      .order('published_at', { ascending: false });
+
+    CT.length = 0;
+    if (postsData && postsData.length > 0) {
+      postsData.forEach((p: DbPost, idx: number) => {
+        const pubDate = new Date(p.published_at);
+        const eng = p.views > 0 ? ((p.likes + p.replies) / p.views) * 100 : 0;
+        CT.push({
+          id: idx + 1,
+          p: p.platform,
+          type: p.replies > 0 && p.views === 0 ? 'reply external' : 'original post',
+          topic: 'General',
+          text: p.content || (p.platform === 'x' ? 'X Post' : 'LinkedIn Post'),
+          views: p.views || 0,
+          likes: p.likes || 0,
+          replies: p.replies || 0,
+          eng: parseFloat(eng.toFixed(2)),
+          date: isNaN(pubDate.getTime()) ? new Date() : pubDate,
+          note: '',
+        });
+      });
+    } else {
+      // Synthesize content items from activity_daily so user sees their recorded activity
+      data.forEach((row: DbDailyActivity, idx: number) => {
+        if ((row.posts || 0) > 0 || (row.replies || 0) > 0) {
+          const rowDate = new Date(row.date + 'T12:00:00');
+          CT.push({
+            id: idx + 1,
+            p: row.platform,
+            type: row.posts > 0 ? 'original post' : 'reply external',
+            topic: 'General',
+            text: `${row.posts > 0 ? `${row.posts} post${row.posts > 1 ? 's' : ''}` : ''}${row.posts > 0 && row.replies > 0 ? ', ' : ''}${row.replies > 0 ? `${row.replies} repl${row.replies > 1 ? 'ies' : 'y'}` : ''} on ${row.platform === 'x' ? 'X' : 'LinkedIn'}`,
+            views: row.views || 0,
+            likes: row.likes || 0,
+            replies: row.replies || 0,
+            eng: row.views > 0 ? parseFloat((((row.likes + row.replies) / row.views) * 100).toFixed(2)) : 0,
+            date: rowDate,
+            note: '',
+          });
+        }
+      });
+    }
+
     return matched > 0;
   } catch (e) {
     console.error('Error syncing Supabase to memory:', e);

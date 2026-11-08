@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 import path from 'node:path';
 import fs from 'node:fs';
 
-const screenshotsDir = 'C:\\Users\\kartik\\.gemini\antigravity\\brain\\9421b64f-751c-4faa-83cb-b281fdd9f0d7\\screenshots\\data_and_prev_fixes';
+const screenshotsDir = 'C:\\Users\\kartik\\.gemini\\antigravity\\brain\\9421b64f-751c-4faa-83cb-b281fdd9f0d7\\screenshots\\data_and_prev_fixes';
 fs.mkdirSync(screenshotsDir, { recursive: true });
 
 async function run() {

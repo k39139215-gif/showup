@@ -57,14 +57,14 @@ export const ContentPage: React.FC<ContentPageProps> = ({
   sel,
   setSel,
 }) => {
-  const { isDateInCurrentRange, rangeLabel } = useDateRangeStore();
+  const { isDateInCurrentRange, rangeLabel, dateSlice } = useDateRangeStore();
 
   const isLoaded = useLoadingState([plat, ct, cs, rangeLabel]);
 
   // Filter content items by current date range
   const inRangeCT = useMemo(() => {
     return CT.filter((c) => isDateInCurrentRange(c.date));
-  }, [isDateInCurrentRange]);
+  }, [isDateInCurrentRange, dateSlice]);
 
   const L = useMemo(() => {
     const filtered = inRangeCT.filter(

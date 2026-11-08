@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { formatLocalDate } from '../utils/dateMath';
 
 const LINKEDIN_CLIENT_ID = import.meta.env.VITE_LINKEDIN_CLIENT_ID || '865mftbchcmlql';
 
@@ -37,7 +38,7 @@ export async function syncLinkedInPostsToSupabase(
   const dailyMap = new Map<string, { posts: number; replies: number; views: number; likes: number }>();
 
   const postsToUpsert = posts.map((p) => {
-    const dateStr = new Date(p.publishedAt).toISOString().slice(0, 10);
+    const dateStr = formatLocalDate(new Date(p.publishedAt));
     const cur = dailyMap.get(dateStr) || { posts: 0, replies: 0, views: 0, likes: 0 };
     cur.posts += 1;
     cur.replies += p.replies;

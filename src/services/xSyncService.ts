@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { formatLocalDate } from '../utils/dateMath';
 
 export interface XImportResult {
   success: boolean;
@@ -55,7 +56,7 @@ export async function parseAndUploadXAnalyticsCsv(csvText: string): Promise<XImp
       const parsedDate = new Date(rawTime);
       if (isNaN(parsedDate.getTime())) continue;
 
-      const dateStr = parsedDate.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+      const dateStr = formatLocalDate(parsedDate); // 'YYYY-MM-DD'
       const tweetId = tweetIdIdx !== -1 && row[tweetIdIdx] ? row[tweetIdIdx] : `x-${parsedDate.getTime()}-${i}`;
       const content = textIdx !== -1 && row[textIdx] ? row[textIdx] : '';
       const views = impressionsIdx !== -1 && row[impressionsIdx] ? parseInt(row[impressionsIdx].replace(/,/g, ''), 10) || 0 : 0;

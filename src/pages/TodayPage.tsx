@@ -126,7 +126,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
   }, [consistencyEndIdx]);
 
   // Heatmap: 84 days
-  const cells = useMemo(() => D.slice(-84), []);
+  const cells = D.slice(-84);
   const lead = cells[0] ? (dayAt(N - 84).getDay() + 6) % 7 : 0;
   const lvl = (a: number) => (a === 0 ? '' : a <= 3 ? 'l1' : a <= 7 ? 'l2' : a <= 11 ? 'l3' : 'l4');
 
@@ -188,7 +188,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
   // Recent content filtered to current range
   const recentContent = useMemo(() => {
     return CT.filter((c) => (plat === 'all' || c.p === plat) && isDateInCurrentRange(c.date)).slice(0, 3);
-  }, [plat, isDateInCurrentRange]);
+  }, [plat, isDateInCurrentRange, dateSlice]);
 
   return (
     <>

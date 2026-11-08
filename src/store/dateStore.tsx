@@ -8,7 +8,7 @@ import {
   jsDateToCalendarDate,
   formatRangeDisplay,
 } from '../utils/dateMath';
-import { D, N, TODAY, DayData } from '../data';
+import { D, N, TODAY, DayData, getTodayCalendar } from '../data';
 
 export interface ScheduledAt {
   date: CalendarDate;
@@ -39,15 +39,16 @@ export interface DateStoreContextValue {
     startIndex: number;
     endIndex: number;
   };
+  refreshData: () => void;
   // Slicing utility for content items
   isDateInCurrentRange: (jsDate: Date) => boolean;
 }
 
 const DateStoreContext = createContext<DateStoreContextValue | null>(null);
 
-// Fixed base date: Nov 5, 2026
-const DEFAULT_END = new CalendarDate(2026, 11, 5);
-const DEFAULT_START = DEFAULT_END.subtract({ days: 29 }); // 30 days inclusive: 2026-10-07
+// Default date range: 30 days up to today
+const DEFAULT_END = getTodayCalendar();
+const DEFAULT_START = DEFAULT_END.subtract({ days: 29 });
 
 function parseCalendarDate(str: string | null): CalendarDate | null {
   if (!str) return null;
@@ -112,6 +113,11 @@ export const DateStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [start, setStartState] = useState<CalendarDate>(initial.start);
   const [end, setEndState] = useState<CalendarDate>(initial.end);
   const [scheduledAt, setScheduledAt] = useState<ScheduledAt | undefined>(undefined);
+  const [version, setVersion] = useState(0);
+
+  const refreshData = useCallback(() => {
+    setVersion((v) => v + 1);
+  }, []);
 
   // Sync to URL whenever state changes
   useEffect(() => {
@@ -201,7 +207,7 @@ export const DateStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       startIndex,
       endIndex,
     };
-  }, [start, end, previousPeriod]);
+  }, [start, end, previousPeriod, version]);
 
   const isDateInCurrentRange = useCallback(
     (jsDate: Date) => {
@@ -226,6 +232,7 @@ export const DateStoreProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setMode,
     setScheduledAt,
     dateSlice,
+    refreshData,
     isDateInCurrentRange,
   };
 

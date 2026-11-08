@@ -10,6 +10,14 @@ export function jsDateToCalendarDate(d: Date): CalendarDate {
   return new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 
+/** Format a Date to 'YYYY-MM-DD' in local timezone without UTC offset shift */
+export function formatLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 /** Inclusive day count between two CalendarDates */
 export function daysInRange(start: CalendarDate, end: CalendarDate): number {
   const d1 = calendarDateToJsDate(start);

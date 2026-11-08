@@ -21,8 +21,9 @@ import { CloseButton } from './base/buttons/close-button';
 import { Tooltip, TooltipTrigger } from './base/tooltip/tooltip';
 import { toast } from './base/toast/toast';
 import { cx } from '../utils/cx';
+import { getTodayCalendar } from '../data';
 
-const TODAY_CALENDAR = new CalendarDate(2026, 11, 5); // Fixed app base: Nov 5, 2026
+const TODAY_CALENDAR = getTodayCalendar();
 
 interface PresetItem {
   id: string;

@@ -11,6 +11,7 @@ import {
 } from '@/components/base/dropdown/dropdown';
 import { DateRangePicker, DateRangeValue } from '@/components/base/date-picker/date-range-picker';
 import { DatePicker } from '@/components/base/date-picker/date-picker';
+import { getTodayCalendar } from '../data';
 
 type DateMode = 'range' | 'single' | 'schedule';
 
@@ -26,15 +27,15 @@ export const TopBarDateControl: React.FC = () => {
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [scheduleFreq, setScheduleFreq] = useState<'Daily' | 'Weekly' | 'Monthly'>('Weekly');
 
-  // Default date states for November 5, 2026
+  const todayCal = getTodayCalendar();
+
+  // Default date states for today
   const [rangeValue, setRangeValue] = useState<DateRangeValue | null>({
-    start: new CalendarDate(2026, 10, 7),
-    end: new CalendarDate(2026, 11, 5),
+    start: todayCal.subtract({ days: 29 }),
+    end: todayCal,
   });
 
-  const [singleValue, setSingleValue] = useState<CalendarDate | null>(
-    new CalendarDate(2026, 11, 5)
-  );
+  const [singleValue, setSingleValue] = useState<CalendarDate | null>(todayCal);
 
   return (
     <div className="flex items-center gap-2.5" id="dt-control">

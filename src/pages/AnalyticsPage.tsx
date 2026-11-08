@@ -5,6 +5,7 @@ import {
   dayAt,
   pick,
   sum,
+  getTodayCalendar,
 } from '../data';
 import {
   fmtK,
@@ -41,7 +42,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 
-const TODAY_CALENDAR = new CalendarDate(2026, 11, 5);
+const TODAY_CALENDAR = getTodayCalendar();
 
 interface LineChartProps {
   vals: number[];

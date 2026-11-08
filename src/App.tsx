@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CalendarDate } from '@internationalized/date';
-import { D, N, CT, streak, TOPICS } from './data';
+import { D, N, CT, dayAt, streak, TOPICS } from './data';
 import { Icon } from './utils';
 import { TodayPage } from './pages/TodayPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
@@ -32,6 +32,8 @@ import {
   syncSupabaseToMemory,
   subscribeToDailyActivity,
 } from './services/activityService';
+import { formatLocalDate, calendarDateToJsDate } from './utils/dateMath';
+import { supabase } from './lib/supabase';
 
 const TITLES: Record<string, string> = {
   today: 'Today',
@@ -80,7 +82,7 @@ const AppContent: React.FC = () => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   const viewRef = useRef<HTMLDivElement>(null);
-  const { scheduledAt, setRange, setSingleDate } = useDateRangeStore();
+  const { scheduledAt, setRange, setSingleDate, refreshData } = useDateRangeStore();
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
@@ -91,13 +93,17 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     // Initial fetch from Supabase
-    syncSupabaseToMemory().then((hasData) => {
-      if (hasData) setTick((t) => t + 1);
+    syncSupabaseToMemory().then(() => {
+      setTick((t) => t + 1);
+      refreshData();
     });
 
     // Realtime WebSocket listener: triggers live UI update on any insert/update
     const unsubscribe = subscribeToDailyActivity(() => {
-      syncSupabaseToMemory().then(() => setTick((t) => t + 1));
+      syncSupabaseToMemory().then(() => {
+        setTick((t) => t + 1);
+        refreshData();
+      });
     });
 
     const handleHashChange = () => {
@@ -148,27 +154,70 @@ const AppContent: React.FC = () => {
     const t = dialogType;
     const n = Math.max(1, dialogCount);
     const key = p === 'x' ? (t === 'p' ? 'xp' : 'xr') : (t === 'p' ? 'lp' : 'lr');
-    D[N - 1][key] += n;
+
+    // Target date: scheduled date or today in local time
+    const targetDate = scheduledAt ? calendarDateToJsDate(scheduledAt.date) : new Date();
+    const targetDateStr = formatLocalDate(targetDate);
+
+    // Update in-memory D array at matching date index
+    const targetIdx = D.findIndex((_, idx) => formatLocalDate(dayAt(idx)) === targetDateStr);
+    if (targetIdx !== -1) {
+      D[targetIdx][key] += n;
+    } else {
+      D[N - 1][key] += n;
+    }
+
     setIsDialogOpen(false);
     setTick((prev) => prev + 1);
 
-    // Save real activity into Supabase
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // Save real activity into Supabase activity_daily
     await upsertDailyActivity({
-      date: todayStr,
+      date: targetDateStr,
       platform: p,
       posts: t === 'p' ? n : 0,
       replies: t === 'r' ? n : 0,
+    });
+
+    // Also record real post in Supabase 'posts' table so it appears in Content Library
+    const postRecord = {
+      platform: p,
+      platform_post_id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      content: `${n} ${p === 'x' ? 'X' : 'LinkedIn'} ${t === 'p' ? 'original post' : 'reply'}${n > 1 ? 's' : ''} recorded`,
+      published_at: targetDate.toISOString(),
+      views: 0,
+      replies: t === 'r' ? n : 0,
+      likes: 0,
+      updated_at: new Date().toISOString(),
+    };
+    await supabase.from('posts').insert(postRecord);
+
+    // Push into memory CT
+    CT.unshift({
+      id: CT.length + 1,
+      p,
+      type: t === 'p' ? 'original post' : 'reply external',
+      topic: 'General',
+      text: postRecord.content,
+      views: 0,
+      likes: 0,
+      replies: t === 'r' ? n : 0,
+      eng: 0,
+      date: targetDate,
+      note: '',
     });
 
     toast.success('Activity saved', {
       description: `Recorded ${n} ${t === 'p' ? 'post' : 'reply'}${n > 1 ? 's' : ''} on ${p === 'x' ? 'X' : 'LinkedIn'}.`,
       duration: 4000,
     });
+    refreshData();
   };
 
   const handleImportXSuccess = (result: XImportResult) => {
-    setTick((prev) => prev + 1);
+    syncSupabaseToMemory().then(() => {
+      setTick((prev) => prev + 1);
+      refreshData();
+    });
     toast.success('X Analytics Imported', {
       description: `Imported ${result.importedPosts} real posts across ${result.daysCount} days (${result.totalViews.toLocaleString()} views, ${result.totalReplies.toLocaleString()} replies).`,
       duration: 5000,

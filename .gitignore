@@ -7,3 +7,5 @@ diffs
 .env
 .env.local
 .env.*.local
+
+test-*.png
