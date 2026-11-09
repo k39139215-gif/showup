@@ -121,7 +121,7 @@ export function CommandPalette({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  });
+  }, [shortcut, isOpen]);
 
   return (
     <AriaModalOverlay

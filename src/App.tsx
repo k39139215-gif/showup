@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CalendarDate } from '@internationalized/date';
-import { D, N, CT, dayAt, streak, TOPICS } from './data';
+import { D, N, CT, dayAt, streak, TOPICS, getTodayCalendar } from './data';
 import { Icon } from './utils';
 import { TodayPage } from './pages/TodayPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
@@ -60,6 +60,11 @@ const TYPE_OPTIONS = [
   { value: 'r', label: 'Outbound reply' },
 ];
 
+export const isApple =
+  typeof navigator !== 'undefined' &&
+  (/(Mac|iPhone|iPod|iPad)/i.test(navigator.userAgent) ||
+    /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform || ''));
+
 const AppContent: React.FC = () => {
   const getHashRoute = () => {
     const h = (window.location.hash || '#today').slice(1);
@@ -118,27 +123,179 @@ const AppContent: React.FC = () => {
     window.addEventListener('hashchange', handleHashChange);
     document.body.classList.toggle('is-login', route === 'login');
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setIsCommandPaletteOpen((prev) => !prev);
-      }
-      if (e.key === 'Escape') {
-        setIsSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
     return () => {
       unsubscribe();
       window.removeEventListener('hashchange', handleHashChange);
-      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [route]);
 
+  // Dedicated cross-platform keyboard shortcut system (Windows, Mac, Linux, iPad)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target;
+      const isInput =
+        target instanceof HTMLElement &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable ||
+          Boolean(target.closest('input, textarea, select, [contenteditable="true"]')));
+
+      // Escape always closes any open modal, dialog, palette, or drawer
+      if (e.key === 'Escape' || e.code === 'Escape') {
+        setIsCommandPaletteOpen(false);
+        setIsDialogOpen(false);
+        setIsImportXOpen(false);
+        setIsSidebarOpen(false);
+        return;
+      }
+
+      // Universal Command Palette shortcut: Cmd+K (Mac) or Ctrl+K (Windows/Linux)
+      // Works from anywhere, even if focused inside an input field
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      const isKeyK = e.key.toLowerCase() === 'k' || e.code === 'KeyK';
+      if (isCmdOrCtrl && isKeyK) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsCommandPaletteOpen((prev) => !prev);
+        return;
+      }
+
+      // If user is currently typing in an input field, do not trigger single-key page jumps
+      if (isInput) return;
+
+      // If a modal or palette is currently open, do not trigger single-key page jumps
+      if (isDialogOpen || isImportXOpen || isCommandPaletteOpen) return;
+
+      // Ignore single-key navigation if modifier keys (Ctrl, Alt, Meta) are pressed
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // Quick slash '/' or '?' opens Command Palette
+      if (e.key === '/' || e.code === 'Slash' || e.key === '?') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(true);
+        return;
+      }
+
+      // Quick Navigation numbers 1 to 5
+      if (e.key === '1' || e.code === 'Digit1') {
+        e.preventDefault();
+        window.location.hash = '#today';
+        toast.info('Navigated to Today (Key: 1)');
+        return;
+      }
+      if (e.key === '2' || e.code === 'Digit2') {
+        e.preventDefault();
+        window.location.hash = '#analytics';
+        toast.info('Navigated to Analytics (Key: 2)');
+        return;
+      }
+      if (e.key === '3' || e.code === 'Digit3') {
+        e.preventDefault();
+        window.location.hash = '#content';
+        toast.info('Navigated to Content Library (Key: 3)');
+        return;
+      }
+      if (e.key === '4' || e.code === 'Digit4') {
+        e.preventDefault();
+        window.location.hash = '#review';
+        toast.info('Navigated to Weekly Review (Key: 4)');
+        return;
+      }
+      if (e.key === '5' || e.code === 'Digit5') {
+        e.preventDefault();
+        window.location.hash = '#settings';
+        toast.info('Navigated to Settings (Key: 5)');
+        return;
+      }
+
+      // 'A' opens Add Activity modal
+      if (e.key.toLowerCase() === 'a' || e.code === 'KeyA') {
+        e.preventDefault();
+        handleOpenDialog();
+        return;
+      }
+
+      // 'P' toggles Platform filter (All -> X -> LinkedIn)
+      if (e.key.toLowerCase() === 'p' || e.code === 'KeyP') {
+        e.preventDefault();
+        setPlat((prev) => {
+          const next = prev === 'all' ? 'x' : prev === 'x' ? 'li' : 'all';
+          toast.info(`Platform filter: ${next === 'all' ? 'All Platforms' : next === 'x' ? 'X' : 'LinkedIn'} (Key: P)`);
+          return next;
+        });
+        return;
+      }
+
+      // 'I' opens Import X modal
+      if (e.key.toLowerCase() === 'i' || e.code === 'KeyI') {
+        e.preventDefault();
+        setIsImportXOpen(true);
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isDialogOpen, isImportXOpen, isCommandPaletteOpen]);
+
   const handleSearchClick = () => {
     setIsCommandPaletteOpen(true);
+  };
+
+  const handlePaletteAction = (key: any) => {
+    setIsCommandPaletteOpen(false);
+    const k = String(key);
+    if (k === 'page-today') {
+      window.location.hash = '#today';
+      toast.info('Navigated to Today');
+    } else if (k === 'page-analytics') {
+      window.location.hash = '#analytics';
+      toast.info('Navigated to Analytics');
+    } else if (k === 'page-content') {
+      window.location.hash = '#content';
+      toast.info('Navigated to Content Library');
+    } else if (k === 'page-review') {
+      window.location.hash = '#review';
+      toast.info('Navigated to Weekly Review');
+    } else if (k === 'page-settings') {
+      window.location.hash = '#settings';
+      toast.info('Navigated to Settings');
+    } else if (k === 'action-add') {
+      handleOpenDialog();
+    } else if (k === 'action-plat') {
+      setPlat((prev) => {
+        const next = prev === 'all' ? 'x' : prev === 'x' ? 'li' : 'all';
+        toast.info(`Platform filter: ${next === 'all' ? 'All Platforms' : next === 'x' ? 'X' : 'LinkedIn'}`);
+        return next;
+      });
+    } else if (k === 'action-import-x') {
+      setIsImportXOpen(true);
+    } else if (k.startsWith('topic-')) {
+      const topic = k.replace('topic-', '');
+      setCq(topic);
+      window.location.hash = '#content';
+      toast.info(`Filtered content by #${topic}`);
+    } else if (k.startsWith('content-')) {
+      const id = parseInt(k.replace('content-', ''), 10);
+      setSel(id);
+      window.location.hash = '#content';
+    } else if (k === 'date-today') {
+      setSingleDate(getTodayCalendar());
+      toast.info('Date set to Today');
+    } else if (k === 'date-7d') {
+      const end = getTodayCalendar();
+      setRange(end.subtract({ days: 6 }), end);
+      toast.info('Date range set to Last 7 days');
+    } else if (k === 'date-30d') {
+      const end = getTodayCalendar();
+      setRange(end.subtract({ days: 29 }), end);
+      toast.info('Date range set to Last 30 days');
+    } else if (k === 'date-all') {
+      const end = getTodayCalendar();
+      setRange(end.subtract({ days: N - 1 }), end);
+      toast.info('Date range set to All time');
+    }
   };
 
   const handleOpenDialog = () => {
@@ -314,7 +471,7 @@ const AppContent: React.FC = () => {
           <circle cx="11" cy="11" r="7" />
           <path d="M20 20l-3.5-3.5" />
         </svg>
-        Search<kbd>⌘ K</kbd>
+        Search<kbd>{isApple ? '⌘K' : 'Ctrl+K'}</kbd>
       </div>
       <div className="sidebar-scroll">
         <div>
@@ -568,7 +725,9 @@ const AppContent: React.FC = () => {
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         onOpenChange={setIsCommandPaletteOpen}
+        shortcut={false}
         placeholder="Type a command or search…"
+        onAction={handlePaletteAction}
       >
         <CommandPaletteSection title="Pages">
           <CommandPaletteItem
@@ -622,38 +781,41 @@ const AppContent: React.FC = () => {
           <CommandPaletteItem
             id="date-today"
             onAction={() => {
-              setSingleDate(new CalendarDate(2026, 11, 5));
+              setSingleDate(getTodayCalendar());
               toast.info('Date set to Today');
             }}
           >
-            Today (5 Nov 2026)
+            Today
           </CommandPaletteItem>
           <CommandPaletteItem
             id="date-7d"
             onAction={() => {
-              setRange(new CalendarDate(2026, 10, 30), new CalendarDate(2026, 11, 5));
+              const end = getTodayCalendar();
+              setRange(end.subtract({ days: 6 }), end);
               toast.info('Date range set to Last 7 days');
             }}
           >
-            Last 7 days (30 Oct - 5 Nov)
+            Last 7 days
           </CommandPaletteItem>
           <CommandPaletteItem
             id="date-30d"
             onAction={() => {
-              setRange(new CalendarDate(2026, 10, 7), new CalendarDate(2026, 11, 5));
+              const end = getTodayCalendar();
+              setRange(end.subtract({ days: 29 }), end);
               toast.info('Date range set to Last 30 days');
             }}
           >
-            Last 30 days (7 Oct - 5 Nov)
+            Last 30 days
           </CommandPaletteItem>
           <CommandPaletteItem
             id="date-all"
             onAction={() => {
-              setRange(new CalendarDate(2026, 8, 8), new CalendarDate(2026, 11, 5));
+              const end = getTodayCalendar();
+              setRange(end.subtract({ days: N - 1 }), end);
               toast.info('Date range set to All time');
             }}
           >
-            All time (8 Aug - 5 Nov)
+            All time
           </CommandPaletteItem>
         </CommandPaletteSection>
 
@@ -690,6 +852,13 @@ const AppContent: React.FC = () => {
             }}
           >
             Toggle platform filter (All / X / LinkedIn)
+          </CommandPaletteItem>
+          <CommandPaletteItem
+            id="action-import-x"
+            shortcut="I"
+            onAction={() => setIsImportXOpen(true)}
+          >
+            Import real X (Twitter) analytics CSV
           </CommandPaletteItem>
         </CommandPaletteSection>
 
