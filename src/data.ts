@@ -79,6 +79,8 @@ export const TOPICS = ['AR', 'Cash Application', 'Deductions', 'NetSuite', 'SAP'
 
 export interface ContentItem {
   id: number;
+  dbId?: string;
+  platform_post_id?: string;
   p: 'x' | 'li';
   type: string;
   topic: string;

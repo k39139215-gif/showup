@@ -326,9 +326,7 @@ export const UnifiedDatePicker: React.FC = () => {
     setDraftEnd(r.end);
     setPickingEnd(false);
     setVisibleMonth(new CalendarDate(r.start.year, r.start.month, 1));
-    if (preset.id === 'allTime') {
-      toast.info('Date range reset to all time');
-    }
+    
   };
 
   const handleDayClick = (day: CalendarDate) => {

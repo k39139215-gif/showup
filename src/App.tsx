@@ -181,32 +181,27 @@ const AppContent: React.FC = () => {
       if (e.key === '1' || e.code === 'Digit1') {
         e.preventDefault();
         window.location.hash = '#today';
-        toast.info('Navigated to Today (Key: 1)');
-        return;
+                return;
       }
       if (e.key === '2' || e.code === 'Digit2') {
         e.preventDefault();
         window.location.hash = '#analytics';
-        toast.info('Navigated to Analytics (Key: 2)');
-        return;
+                return;
       }
       if (e.key === '3' || e.code === 'Digit3') {
         e.preventDefault();
         window.location.hash = '#content';
-        toast.info('Navigated to Content Library (Key: 3)');
-        return;
+                return;
       }
       if (e.key === '4' || e.code === 'Digit4') {
         e.preventDefault();
         window.location.hash = '#review';
-        toast.info('Navigated to Weekly Review (Key: 4)');
-        return;
+                return;
       }
       if (e.key === '5' || e.code === 'Digit5') {
         e.preventDefault();
         window.location.hash = '#settings';
-        toast.info('Navigated to Settings (Key: 5)');
-        return;
+                return;
       }
 
       // 'A' opens Add Activity modal
@@ -221,8 +216,7 @@ const AppContent: React.FC = () => {
         e.preventDefault();
         setPlat((prev) => {
           const next = prev === 'all' ? 'x' : prev === 'x' ? 'li' : 'all';
-          toast.info(`Platform filter: ${next === 'all' ? 'All Platforms' : next === 'x' ? 'X' : 'LinkedIn'} (Key: P)`);
-          return next;
+                    return next;
         });
         return;
       }
@@ -248,26 +242,20 @@ const AppContent: React.FC = () => {
     const k = String(key);
     if (k === 'page-today') {
       window.location.hash = '#today';
-      toast.info('Navigated to Today');
-    } else if (k === 'page-analytics') {
+          } else if (k === 'page-analytics') {
       window.location.hash = '#analytics';
-      toast.info('Navigated to Analytics');
-    } else if (k === 'page-content') {
+          } else if (k === 'page-content') {
       window.location.hash = '#content';
-      toast.info('Navigated to Content Library');
-    } else if (k === 'page-review') {
+          } else if (k === 'page-review') {
       window.location.hash = '#review';
-      toast.info('Navigated to Weekly Review');
-    } else if (k === 'page-settings') {
+          } else if (k === 'page-settings') {
       window.location.hash = '#settings';
-      toast.info('Navigated to Settings');
-    } else if (k === 'action-add') {
+          } else if (k === 'action-add') {
       handleOpenDialog();
     } else if (k === 'action-plat') {
       setPlat((prev) => {
         const next = prev === 'all' ? 'x' : prev === 'x' ? 'li' : 'all';
-        toast.info(`Platform filter: ${next === 'all' ? 'All Platforms' : next === 'x' ? 'X' : 'LinkedIn'}`);
-        return next;
+                return next;
       });
     } else if (k === 'action-import-x') {
       setIsImportXOpen(true);
@@ -275,27 +263,22 @@ const AppContent: React.FC = () => {
       const topic = k.replace('topic-', '');
       setCq(topic);
       window.location.hash = '#content';
-      toast.info(`Filtered content by #${topic}`);
-    } else if (k.startsWith('content-')) {
+          } else if (k.startsWith('content-')) {
       const id = parseInt(k.replace('content-', ''), 10);
       setSel(id);
       window.location.hash = '#content';
     } else if (k === 'date-today') {
       setSingleDate(getTodayCalendar());
-      toast.info('Date set to Today');
-    } else if (k === 'date-7d') {
+          } else if (k === 'date-7d') {
       const end = getTodayCalendar();
       setRange(end.subtract({ days: 6 }), end);
-      toast.info('Date range set to Last 7 days');
-    } else if (k === 'date-30d') {
+          } else if (k === 'date-30d') {
       const end = getTodayCalendar();
       setRange(end.subtract({ days: 29 }), end);
-      toast.info('Date range set to Last 30 days');
-    } else if (k === 'date-all') {
+          } else if (k === 'date-all') {
       const end = getTodayCalendar();
       setRange(end.subtract({ days: N - 1 }), end);
-      toast.info('Date range set to All time');
-    }
+          }
   };
 
   const handleOpenDialog = () => {
@@ -346,7 +329,7 @@ const AppContent: React.FC = () => {
       likes: 0,
       updated_at: new Date().toISOString(),
     };
-    await supabase.from('posts').insert(postRecord);
+    const { data: insertedPost } = await supabase.from('posts').insert(postRecord).select().single();
 
     // Push into memory CT
     CT.unshift({
@@ -403,6 +386,7 @@ const AppContent: React.FC = () => {
             setCs={setCs}
             sel={sel}
             setSel={setSel}
+            onDataChange={() => setTick((prev) => prev + 1)}
           />
         );
       case 'review':
@@ -629,7 +613,7 @@ const AppContent: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="wrap" id="view" ref={viewRef} tabIndex={0} role="region" aria-label="Main content view">
+          <div className="wrap outline-none focus:outline-none focus-visible:outline-none" id="view" ref={viewRef} role="region" aria-label="Main content view">
             <div className="wrap-inner">{renderView()}</div>
           </div>
         </main>
@@ -782,8 +766,7 @@ const AppContent: React.FC = () => {
             id="date-today"
             onAction={() => {
               setSingleDate(getTodayCalendar());
-              toast.info('Date set to Today');
-            }}
+                          }}
           >
             Today
           </CommandPaletteItem>
@@ -792,8 +775,7 @@ const AppContent: React.FC = () => {
             onAction={() => {
               const end = getTodayCalendar();
               setRange(end.subtract({ days: 6 }), end);
-              toast.info('Date range set to Last 7 days');
-            }}
+                          }}
           >
             Last 7 days
           </CommandPaletteItem>
@@ -802,8 +784,7 @@ const AppContent: React.FC = () => {
             onAction={() => {
               const end = getTodayCalendar();
               setRange(end.subtract({ days: 29 }), end);
-              toast.info('Date range set to Last 30 days');
-            }}
+                          }}
           >
             Last 30 days
           </CommandPaletteItem>
@@ -812,8 +793,7 @@ const AppContent: React.FC = () => {
             onAction={() => {
               const end = getTodayCalendar();
               setRange(end.subtract({ days: N - 1 }), end);
-              toast.info('Date range set to All time');
-            }}
+                          }}
           >
             All time
           </CommandPaletteItem>
@@ -827,8 +807,7 @@ const AppContent: React.FC = () => {
               onAction={() => {
                 setCq(topic);
                 window.location.hash = '#content';
-                toast.info(`Filtered content by #${topic}`);
-              }}
+                              }}
             >
               #{topic}
             </CommandPaletteItem>
@@ -848,8 +827,7 @@ const AppContent: React.FC = () => {
             shortcut="P"
             onAction={() => {
               setPlat((prev) => (prev === 'all' ? 'x' : prev === 'x' ? 'li' : 'all'));
-              toast.info('Platform filter toggled');
-            }}
+                          }}
           >
             Toggle platform filter (All / X / LinkedIn)
           </CommandPaletteItem>

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { CT, TOPICS } from '../data';
+import { CT, TOPICS, ContentItem } from '../data';
 import { Icon, Tray } from '../utils';
 import { useDateRangeStore } from '../store/dateStore';
 import { BoardSelect, SelectOption } from '../components/base/select/BoardSelect';
-import { Skeleton } from '../components/base/skeleton/skeleton';
 import { Tooltip, TooltipTrigger } from '../components/base/tooltip/tooltip';
 import { toast } from '../components/base/toast/toast';
 import { useLoadingState } from '../hooks/useLoadingState';
@@ -19,7 +18,16 @@ import { TagGroup, Tag } from '../components/base/tag-group/tag-group';
 import { Chip } from '../components/base/badges/chip';
 import { Pagination } from '../components/base/pagination/pagination';
 import { Textarea } from '../components/base/textarea/textarea';
-import { RiMoreLine, RiCloseLine } from '@remixicon/react';
+import { Modal } from '../components/base/modal/modal';
+import {
+  RiMoreLine,
+  RiCloseLine,
+  RiEditLine,
+  RiDeleteBinLine,
+  RiCheckLine,
+  RiFileCopyLine,
+} from '@remixicon/react';
+import { deleteContentItem, updateContentItem } from '../services/activityService';
 
 interface ContentPageProps {
   plat: string;
@@ -31,6 +39,7 @@ interface ContentPageProps {
   setCs: (s: string) => void;
   sel: number;
   setSel: (id: number) => void;
+  onDataChange?: () => void;
 }
 
 const CONTENT_TYPE_OPTIONS: SelectOption[] = [
@@ -56,15 +65,17 @@ export const ContentPage: React.FC<ContentPageProps> = ({
   setCs,
   sel,
   setSel,
+  onDataChange,
 }) => {
   const { isDateInCurrentRange, rangeLabel, dateSlice } = useDateRangeStore();
+  const [refreshTick, setRefreshTick] = useState(0);
 
-  const isLoaded = useLoadingState([plat, ct, cs, rangeLabel]);
+  const isLoaded = useLoadingState([plat, ct, cs, rangeLabel, refreshTick]);
 
   // Filter content items by current date range
   const inRangeCT = useMemo(() => {
     return CT.filter((c) => isDateInCurrentRange(c.date));
-  }, [isDateInCurrentRange, dateSlice]);
+  }, [isDateInCurrentRange, dateSlice, refreshTick]);
 
   const L = useMemo(() => {
     const filtered = inRangeCT.filter(
@@ -83,7 +94,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
     );
 
     return filtered;
-  }, [inRangeCT, plat, ct, cq, cs]);
+  }, [inRangeCT, plat, ct, cq, cs, refreshTick]);
 
   // Selected item resets if it falls outside current range
   useEffect(() => {
@@ -112,7 +123,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
 
   const selectedItem = inRangeCT.find((x) => x.id === sel);
 
-  // Note editor debounced save (Requirement 16)
+  // Strategic note editor debounced save (Requirement 16)
   const [noteVal, setNoteVal] = useState(selectedItem?.note || '');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -130,8 +141,90 @@ export const ContentPage: React.FC<ContentPageProps> = ({
     debounceTimer.current = setTimeout(() => {
       selectedItem.note = text;
       setSaveStatus('saved');
-      toast.success('Strategic note saved');
     }, 500);
+  };
+
+  // Inline Copy status (no toast!)
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const handleCopy = (item: ContentItem) => {
+    if (item?.text && navigator.clipboard) {
+      navigator.clipboard.writeText(item.text);
+      setCopiedId(item.id);
+      setTimeout(() => setCopiedId(null), 1500);
+    }
+  };
+
+  // Edit Modal State
+  const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
+  const [editForm, setEditForm] = useState<{
+    text: string;
+    p: 'x' | 'li';
+    type: string;
+    topic: string;
+    views: number;
+    likes: number;
+    replies: number;
+  }>({
+    text: '',
+    p: 'x',
+    type: 'original post',
+    topic: 'General',
+    views: 0,
+    likes: 0,
+    replies: 0,
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const handleOpenEdit = (item: ContentItem) => {
+    setEditingItem(item);
+    setEditForm({
+      text: item.text,
+      p: item.p,
+      type: item.type,
+      topic: item.topic || 'General',
+      views: item.views,
+      likes: item.likes,
+      replies: item.replies,
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    setIsSavingEdit(true);
+    const success = await updateContentItem(editingItem, editForm);
+    setIsSavingEdit(false);
+    if (success) {
+      toast.success('Post updated');
+      setEditingItem(null);
+      setRefreshTick((prev) => prev + 1);
+      onDataChange?.();
+    } else {
+      toast.error('Failed to update post');
+    }
+  };
+
+  // Delete Confirmation State
+  const [deletingItem, setDeletingItem] = useState<ContentItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async (item: ContentItem) => {
+    setIsDeleting(true);
+    const success = await deleteContentItem(item);
+    setIsDeleting(false);
+    setDeletingItem(null);
+    if (success) {
+      toast.success('Post deleted');
+      const remaining = CT.filter((c) => isDateInCurrentRange(c.date));
+      if (remaining.length > 0) {
+        setSel(remaining[0].id);
+      } else {
+        setSel(-1);
+      }
+      setRefreshTick((prev) => prev + 1);
+      onDataChange?.();
+    } else {
+      toast.error('Failed to delete post');
+    }
   };
 
   return (
@@ -248,7 +341,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
           </div>
         ) : (
           <div className="cm g">
-            <Skeleton isLoaded={isLoaded} className="w-full">
+            <div className="w-full">
               <div className="clist">
                 {paginatedL.map((c) => (
                   <ContextMenuTrigger key={c.id}>
@@ -266,29 +359,37 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                         </div>
                         <Dropdown>
                           <DropdownTrigger
-                            className="row-menu-btn h-5 w-5 rounded hover:bg-neutral-200 flex items-center justify-center text-neutral-500 cursor-pointer shrink-0"
+                            className="row-menu-btn h-6 w-6 rounded hover:bg-neutral-200 flex items-center justify-center text-neutral-500 cursor-pointer shrink-0"
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}
                             aria-label="Post actions"
                           >
                             <RiMoreLine className="size-4" />
                           </DropdownTrigger>
-                          <DropdownPopover aria-label="Row actions" placement="bottom end" className="w-36 z-[120]">
-                            <DropdownItem onSelect={() => toast.info(`Editing post #${c.id}`)}>
-                              Edit
+                          <DropdownPopover aria-label="Row actions" placement="bottom end" className="w-40 z-[120]">
+                            <DropdownItem onSelect={() => handleOpenEdit(c)}>
+                              <div className="flex items-center gap-2">
+                                <RiEditLine className="size-4 text-neutral-500" />
+                                <span>Edit</span>
+                              </div>
                             </DropdownItem>
                             <DropdownItem
                               onSelect={() => {
-                                navigator.clipboard?.writeText(c.text);
-                                toast.success('Copied link');
+                                handleCopy(c);
                               }}
                             >
-                              Copy link
+                              <div className="flex items-center gap-2">
+                                <RiFileCopyLine className="size-4 text-neutral-500" />
+                                <span>Copy text</span>
+                              </div>
                             </DropdownItem>
                             <DropdownItem
-                              onSelect={() => toast.info(`Deleted post #${c.id}`)}
+                              onSelect={() => setDeletingItem(c)}
                               className="text-red-600 hover:text-red-700"
                             >
-                              Delete
+                              <div className="flex items-center gap-2">
+                                <RiDeleteBinLine className="size-4 text-red-600" />
+                                <span>Delete</span>
+                              </div>
                             </DropdownItem>
                           </DropdownPopover>
                         </Dropdown>
@@ -318,21 +419,18 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                       </ContextMenuItem>
                       <ContextMenuItem
                         id="copy"
-                        onAction={() => {
-                          navigator.clipboard?.writeText(c.text);
-                          toast.success('Copied link');
-                        }}
+                        onAction={() => handleCopy(c)}
                       >
-                        Copy link
+                        Copy text
                       </ContextMenuItem>
-                      <ContextMenuItem id="edit" onAction={() => toast.info(`Editing post #${c.id}`)}>
+                      <ContextMenuItem id="edit" onAction={() => handleOpenEdit(c)}>
                         Edit
                       </ContextMenuItem>
                       <ContextMenuSeparator />
                       <ContextMenuItem
                         id="delete"
                         variant="danger"
-                        onAction={() => toast.info(`Deleted post #${c.id}`)}
+                        onAction={() => setDeletingItem(c)}
                       >
                         Delete
                       </ContextMenuItem>
@@ -349,7 +447,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                   />
                 </div>
               )}
-            </Skeleton>
+            </div>
 
             {selectedItem && (
               <div className="tb" style={{ position: 'sticky', top: '10px' }}>
@@ -357,23 +455,44 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                 >
                   <b style={{ fontWeight: 600 }}>Inspection</b>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <TooltipTrigger delay={100}>
-                      <button
-                        type="button"
-                        className="h-6 px-2 text-[11px] rounded border border-[var(--line)] bg-white hover:bg-neutral-100 flex items-center gap-1 cursor-pointer text-neutral-600"
-                        onClick={() => {
-                          if (selectedItem?.text) {
-                            navigator.clipboard?.writeText(selectedItem.text);
-                            toast.success('Copied to clipboard');
-                          }
-                        }}
-                      >
-                        Copy
-                      </button>
-                      <Tooltip size="sm">Copy post content to clipboard</Tooltip>
-                    </TooltipTrigger>
-                    <span className="muted mono" style={{ fontSize: '12px' }}>{`#${selectedItem.id}`}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      className="h-6 px-2 text-[11px] rounded border border-[var(--line)] bg-white hover:bg-neutral-100 flex items-center gap-1 cursor-pointer text-neutral-600 transition-colors"
+                      onClick={() => handleCopy(selectedItem)}
+                      title="Copy text"
+                    >
+                      {copiedId === selectedItem.id ? (
+                        <>
+                          <RiCheckLine className="size-3 text-emerald-600" />
+                          <span className="text-emerald-600 font-medium">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <RiFileCopyLine className="size-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="h-6 px-2 text-[11px] rounded border border-[var(--line)] bg-white hover:bg-neutral-100 flex items-center gap-1 cursor-pointer text-neutral-600 transition-colors"
+                      onClick={() => handleOpenEdit(selectedItem)}
+                      title="Edit post"
+                    >
+                      <RiEditLine className="size-3" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="h-6 px-2 text-[11px] rounded border border-red-200 bg-red-50 hover:bg-red-100 flex items-center gap-1 cursor-pointer text-red-600 transition-colors"
+                      onClick={() => setDeletingItem(selectedItem)}
+                      title="Delete post"
+                    >
+                      <RiDeleteBinLine className="size-3" />
+                      <span>Delete</span>
+                    </button>
+                    <span className="muted mono ml-1" style={{ fontSize: '12px' }}>{`#${selectedItem.id}`}</span>
                   </div>
                 </div>
                 <div style={{ marginTop: '10px' }}>
@@ -453,6 +572,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                     </div>
                   );
                 })()}
+
                 <div className="fld" style={{ marginTop: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--ink)' }}>Strategic note</span>
@@ -476,6 +596,168 @@ export const ContentPage: React.FC<ContentPageProps> = ({
           </div>
         )}
       </Tray>
+
+      {/* Edit Post Modal */}
+      <Modal
+        isOpen={editingItem !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingItem(null);
+        }}
+        aria-label="Edit post"
+        className="p-6 rounded-2xl bg-white border border-[var(--line)] shadow-2xl max-w-lg w-full flex flex-col gap-3"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-[var(--ink)]">Edit post #{editingItem?.id}</h3>
+          <button
+            type="button"
+            onClick={() => setEditingItem(null)}
+            className="text-neutral-400 hover:text-neutral-600 cursor-pointer"
+            aria-label="Close"
+          >
+            <RiCloseLine className="size-5" />
+          </button>
+        </div>
+
+        <label className="fld">
+          Content / Text
+          <Textarea
+            id="edit_content_text"
+            rows={3}
+            value={editForm.text}
+            onChange={(val) => setEditForm((prev) => ({ ...prev, text: val }))}
+            placeholder="Post content..."
+            className="w-full text-[13px]"
+          />
+        </label>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="fld">
+            Platform
+            <BoardSelect
+              id="edit_p"
+              value={editForm.p}
+              onChange={(val) => setEditForm((prev) => ({ ...prev, p: val as 'x' | 'li' }))}
+              options={[
+                { value: 'x', label: 'X (Twitter)' },
+                { value: 'li', label: 'LinkedIn' },
+              ]}
+              aria-label="Platform"
+            />
+          </label>
+
+          <label className="fld">
+            Type
+            <BoardSelect
+              id="edit_t"
+              value={editForm.type}
+              onChange={(val) => setEditForm((prev) => ({ ...prev, type: val }))}
+              options={[
+                { value: 'original post', label: 'Original post' },
+                { value: 'reply external', label: 'Reply external' },
+                { value: 'reply own_conversation', label: 'Reply own conversation' },
+              ]}
+              aria-label="Type"
+            />
+          </label>
+        </div>
+
+        <label className="fld">
+          Topic
+          <BoardSelect
+            id="edit_topic"
+            value={editForm.topic}
+            onChange={(val) => setEditForm((prev) => ({ ...prev, topic: val }))}
+            options={[
+              { value: 'General', label: 'General' },
+              ...TOPICS.map((t) => ({ value: t, label: '#' + t })),
+            ]}
+            aria-label="Topic"
+          />
+        </label>
+
+        <div className="grid grid-cols-3 gap-2.5">
+          <div className="fld">
+            <span className="text-[12px] font-medium text-neutral-600">Views</span>
+            <input
+              type="number"
+              min={0}
+              value={editForm.views}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, views: Math.max(0, parseInt(e.target.value, 10) || 0) }))}
+              className="w-full h-9 px-2.5 rounded-lg border border-[var(--line)] text-[13px] font-mono bg-white"
+            />
+          </div>
+          <div className="fld">
+            <span className="text-[12px] font-medium text-neutral-600">Likes</span>
+            <input
+              type="number"
+              min={0}
+              value={editForm.likes}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, likes: Math.max(0, parseInt(e.target.value, 10) || 0) }))}
+              className="w-full h-9 px-2.5 rounded-lg border border-[var(--line)] text-[13px] font-mono bg-white"
+            />
+          </div>
+          <div className="fld">
+            <span className="text-[12px] font-medium text-neutral-600">Replies</span>
+            <input
+              type="number"
+              min={0}
+              value={editForm.replies}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, replies: Math.max(0, parseInt(e.target.value, 10) || 0) }))}
+              className="w-full h-9 px-2.5 rounded-lg border border-[var(--line)] text-[13px] font-mono bg-white"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2.5 mt-4 pt-3 border-t border-[var(--line)]">
+          <button
+            type="button"
+            className="btn ghost text-[13px] h-9 px-3"
+            onClick={() => setEditingItem(null)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn text-[13px] h-9 px-4"
+            onClick={handleSaveEdit}
+            disabled={isSavingEdit}
+          >
+            {isSavingEdit ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={deletingItem !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingItem(null);
+        }}
+        aria-label="Confirm delete"
+        className="p-6 rounded-2xl bg-white border border-[var(--line)] shadow-2xl max-w-sm w-full flex flex-col gap-3"
+      >
+        <h3 className="text-base font-semibold text-neutral-900">Delete this post?</h3>
+        <p className="text-[13px] text-neutral-500 leading-normal">
+          This will permanently remove post #{deletingItem?.id} from your content library and update your daily totals in Supabase.
+        </p>
+        <div className="flex justify-end gap-2 mt-3 pt-2">
+          <button
+            type="button"
+            className="btn ghost text-[13px] h-9 px-3"
+            onClick={() => setDeletingItem(null)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn text-[13px] h-9 px-4 bg-red-600 hover:bg-red-700 text-white border-red-600"
+            onClick={() => deletingItem && handleDelete(deletingItem)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </Modal>
     </>
   );
 };

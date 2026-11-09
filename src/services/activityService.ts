@@ -1,5 +1,5 @@
 import { supabase, DbDailyActivity, DbPost, DbGoal } from '../lib/supabase';
-import { D, N, dayAt, CT } from '../data';
+import { D, N, dayAt, CT, ContentItem } from '../data';
 import { formatLocalDate } from '../utils/dateMath';
 
 export interface DayRecord {
@@ -195,6 +195,8 @@ export async function syncSupabaseToMemory(): Promise<boolean> {
         const eng = p.views > 0 ? ((p.likes + p.replies) / p.views) * 100 : 0;
         CT.push({
           id: idx + 1,
+          dbId: p.id,
+          platform_post_id: p.platform_post_id,
           p: p.platform,
           type: p.replies > 0 && p.views === 0 ? 'reply external' : 'original post',
           topic: 'General',
@@ -232,6 +234,198 @@ export async function syncSupabaseToMemory(): Promise<boolean> {
     return matched > 0;
   } catch (e) {
     console.error('Error syncing Supabase to memory:', e);
+    return false;
+  }
+}
+
+/**
+ * Delete a post/content item from Supabase and sync memory
+ */
+export async function deleteContentItem(item: ContentItem): Promise<boolean> {
+  try {
+    // 1. Delete from Supabase 'posts' table
+    if (item.dbId) {
+      await supabase.from('posts').delete().eq('id', item.dbId);
+    } else if (item.platform_post_id) {
+      await supabase.from('posts').delete().eq('platform_post_id', item.platform_post_id);
+    } else {
+      await supabase
+        .from('posts')
+        .delete()
+        .eq('content', item.text)
+        .eq('platform', item.p);
+    }
+
+    // 2. Decrement counts in Supabase 'activity_daily' table
+    const dateStr = formatLocalDate(item.date);
+    const { data: dailyRow } = await supabase
+      .from('activity_daily')
+      .select('*')
+      .eq('date', dateStr)
+      .eq('platform', item.p)
+      .maybeSingle();
+
+    if (dailyRow) {
+      let postsToDec = 0;
+      let repliesToDec = 0;
+      if (item.text) {
+        const matchPosts = item.text.match(/^(\d+)\s+(?:X|LinkedIn)\s+original post/);
+        if (matchPosts) postsToDec = parseInt(matchPosts[1], 10);
+        else if (item.type === 'original post') postsToDec = 1;
+
+        const matchReplies = item.text.match(/^(\d+)\s+(?:X|LinkedIn)\s+reply/);
+        if (matchReplies) repliesToDec = parseInt(matchReplies[1], 10);
+        else if (item.type.includes('reply')) repliesToDec = item.replies || 1;
+      } else {
+        postsToDec = item.type === 'original post' ? 1 : 0;
+        repliesToDec = item.type.includes('reply') ? (item.replies || 1) : 0;
+      }
+
+      const newPosts = Math.max(0, (dailyRow.posts || 0) - postsToDec);
+      const newReplies = Math.max(0, (dailyRow.replies || 0) - (repliesToDec || item.replies || 0));
+      const newViews = Math.max(0, (dailyRow.views || 0) - (item.views || 0));
+      const newLikes = Math.max(0, (dailyRow.likes || 0) - (item.likes || 0));
+
+      if (newPosts === 0 && newReplies === 0 && newViews === 0 && newLikes === 0) {
+        await supabase.from('activity_daily').delete().eq('id', dailyRow.id);
+      } else {
+        await supabase.from('activity_daily').update({
+          posts: newPosts,
+          replies: newReplies,
+          views: newViews,
+          likes: newLikes,
+          updated_at: new Date().toISOString(),
+        }).eq('id', dailyRow.id);
+      }
+    }
+
+    // 3. Remove from memory CT
+    const ctIdx = CT.findIndex((c) => c.id === item.id || (item.dbId && c.dbId === item.dbId));
+    if (ctIdx !== -1) {
+      CT.splice(ctIdx, 1);
+    }
+
+    // 4. Update memory D array
+    const dIdx = D.findIndex((_, idx) => formatLocalDate(dayAt(idx)) === dateStr);
+    if (dIdx !== -1) {
+      const pKeyPost = item.p === 'x' ? 'xp' : 'lp';
+      const pKeyReply = item.p === 'x' ? 'xr' : 'lr';
+      const pKeyView = item.p === 'x' ? 'xv' : 'li';
+      const pKeyLike = item.p === 'x' ? 'xl' : 'll';
+
+      let postsToDec = item.type === 'original post' ? 1 : 0;
+      let repliesToDec = item.type.includes('reply') ? (item.replies || 1) : 0;
+      const match = item.text.match(/^(\d+)\s+(?:X|LinkedIn)\s+(original post|reply)/);
+      if (match) {
+        const count = parseInt(match[1], 10);
+        if (match[2] === 'original post') postsToDec = count;
+        else repliesToDec = count;
+      }
+
+      D[dIdx][pKeyPost] = Math.max(0, D[dIdx][pKeyPost] - postsToDec);
+      D[dIdx][pKeyReply] = Math.max(0, D[dIdx][pKeyReply] - repliesToDec);
+      D[dIdx][pKeyView] = Math.max(0, D[dIdx][pKeyView] - (item.views || 0));
+      D[dIdx][pKeyLike] = Math.max(0, D[dIdx][pKeyLike] - (item.likes || 0));
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Error in deleteContentItem:', err);
+    return false;
+  }
+}
+
+/**
+ * Update an existing post/content item in Supabase and sync memory
+ */
+export async function updateContentItem(
+  item: ContentItem,
+  updates: {
+    text: string;
+    p: 'x' | 'li';
+    type: string;
+    topic: string;
+    views: number;
+    likes: number;
+    replies: number;
+    date?: Date;
+  }
+): Promise<boolean> {
+  try {
+    const oldViews = item.views || 0;
+    const oldLikes = item.likes || 0;
+    const oldReplies = item.replies || 0;
+
+    // 1. Update in memory item
+    item.text = updates.text;
+    item.p = updates.p;
+    item.type = updates.type;
+    item.topic = updates.topic;
+    item.views = updates.views;
+    item.likes = updates.likes;
+    item.replies = updates.replies;
+    item.eng = updates.views > 0 ? parseFloat((((updates.likes + updates.replies) / updates.views) * 100).toFixed(2)) : 0;
+    if (updates.date) {
+      item.date = updates.date;
+    }
+
+    // 2. Update Supabase 'posts' table
+    const postPayload = {
+      content: updates.text,
+      platform: updates.p,
+      views: updates.views,
+      likes: updates.likes,
+      replies: updates.replies,
+      published_at: (updates.date || item.date).toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (item.dbId) {
+      await supabase.from('posts').update(postPayload).eq('id', item.dbId);
+    } else if (item.platform_post_id) {
+      await supabase.from('posts').update(postPayload).eq('platform_post_id', item.platform_post_id);
+    } else {
+      await supabase.from('posts').update(postPayload).eq('content', item.text);
+    }
+
+    // 3. Update Supabase 'activity_daily' with delta
+    const dateStr = formatLocalDate(updates.date || item.date);
+    const viewsDelta = updates.views - oldViews;
+    const likesDelta = updates.likes - oldLikes;
+    const repliesDelta = updates.replies - oldReplies;
+
+    if (viewsDelta !== 0 || likesDelta !== 0 || repliesDelta !== 0) {
+      const { data: dailyRow } = await supabase
+        .from('activity_daily')
+        .select('*')
+        .eq('date', dateStr)
+        .eq('platform', updates.p)
+        .maybeSingle();
+
+      if (dailyRow) {
+        await supabase.from('activity_daily').update({
+          views: Math.max(0, (dailyRow.views || 0) + viewsDelta),
+          likes: Math.max(0, (dailyRow.likes || 0) + likesDelta),
+          replies: Math.max(0, (dailyRow.replies || 0) + repliesDelta),
+          updated_at: new Date().toISOString(),
+        }).eq('id', dailyRow.id);
+      }
+
+      // Memory D delta
+      const dIdx = D.findIndex((_, idx) => formatLocalDate(dayAt(idx)) === dateStr);
+      if (dIdx !== -1) {
+        const pKeyReply = updates.p === 'x' ? 'xr' : 'lr';
+        const pKeyView = updates.p === 'x' ? 'xv' : 'li';
+        const pKeyLike = updates.p === 'x' ? 'xl' : 'll';
+        D[dIdx][pKeyView] = Math.max(0, D[dIdx][pKeyView] + viewsDelta);
+        D[dIdx][pKeyLike] = Math.max(0, D[dIdx][pKeyLike] + likesDelta);
+        D[dIdx][pKeyReply] = Math.max(0, D[dIdx][pKeyReply] + repliesDelta);
+      }
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Error in updateContentItem:', err);
     return false;
   }
 }
