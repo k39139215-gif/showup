@@ -119,8 +119,13 @@ const AppContent: React.FC = () => {
 
     const {
       data: { subscription: authListener },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setCurrentUser(session?.user || null);
+      if (event === 'SIGNED_IN' && session?.user) {
+        if (window.location.hash === '#login' || !window.location.hash) {
+          window.location.hash = '#today';
+        }
+      }
     });
 
     return () => {
