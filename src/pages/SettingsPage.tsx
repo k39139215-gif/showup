@@ -37,6 +37,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   const [isXConnected, setIsXConnected] = useState<boolean>(() => localStorage.getItem('verasett_x_connected') !== 'false');
   const [isLinkedInConnected, setIsLinkedInConnected] = useState<boolean>(() => localStorage.getItem('verasett_li_connected') === 'true');
   const [isConnectingLi, setIsConnectingLi] = useState<boolean>(false);
+  const [syncCooldown, setSyncCooldown] = useState<number>(0);
+
+  useEffect(() => {
+    if (syncCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setSyncCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [syncCooldown]);
 
   // URL-synced tab state (?tab=goals) & LinkedIn OAuth callback detection
   useEffect(() => {
@@ -83,12 +92,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   };
 
   const handleSaveXHandle = () => {
+    if (syncCooldown > 0) {
+      toast.warning('Rate limit active', {
+        description: `Please wait ${syncCooldown}s before syncing again to respect Twitter API rate limits.`,
+      });
+      return;
+    }
     const clean = xHandle.replace(/^@/, '').trim();
     localStorage.setItem('verasett_x_handle', clean);
     localStorage.setItem('verasett_x_connected', 'true');
     setIsXConnected(true);
+    setSyncCooldown(60); // 60s cooldown to protect Twitter rate limits
     toast.success('X Profile Linked', {
-      description: `Linked @${clean} to your workspace.`,
+      description: `Linked @${clean} to your workspace. Sync scheduled.`,
     });
   };
 
@@ -290,8 +306,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                     type="button"
                     className="btn text-xs py-1.5 px-3 h-auto"
                     onClick={handleSaveXHandle}
+                    disabled={syncCooldown > 0}
                   >
-                    Save & Sync
+                    {syncCooldown > 0 ? `Wait ${syncCooldown}s` : 'Save & Sync'}
                   </button>
                   {isXConnected && (
                     <button

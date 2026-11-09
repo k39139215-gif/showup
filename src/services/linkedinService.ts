@@ -6,12 +6,12 @@ const LINKEDIN_CLIENT_ID = import.meta.env.VITE_LINKEDIN_CLIENT_ID || '865mftbch
 /**
  * Generate LinkedIn OAuth 2.0 authorization URL
  */
-export function getLinkedInAuthUrl(redirectUri: string): string {
+export function getLinkedInAuthUrl(redirectUri: string, forcePrompt: boolean = true): string {
   const scope = encodeURIComponent('openid profile email w_member_social');
   const state = Math.random().toString(36).substring(7);
   localStorage.setItem('linkedin_oauth_state', state);
 
-  return (
+  let url = (
     `https://www.linkedin.com/oauth/v2/authorization` +
     `?response_type=code` +
     `&client_id=${LINKEDIN_CLIENT_ID}` +
@@ -19,6 +19,12 @@ export function getLinkedInAuthUrl(redirectUri: string): string {
     `&state=${state}` +
     `&scope=${scope}`
   );
+
+  if (forcePrompt) {
+    url += '&prompt=login';
+  }
+
+  return url;
 }
 
 /**
