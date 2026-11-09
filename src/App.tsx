@@ -95,6 +95,18 @@ const AppContent: React.FC = () => {
   const [dialogPlat, setDialogPlat] = useState<string>('x');
   const [dialogType, setDialogType] = useState<string>('p');
   const [dialogCount, setDialogCount] = useState<number>(1);
+  const getCurrentTimeString = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  };
+
+  const getCurrentDateString = () => {
+    return formatLocalDate(new Date());
+  };
+
+  const [dialogDate, setDialogDate] = useState<string>(getCurrentDateString);
+  const [dialogTime, setDialogTime] = useState<string>(getCurrentTimeString);
+
 
   useEffect(() => {
     // Initial fetch from Supabase
@@ -282,6 +294,8 @@ const AppContent: React.FC = () => {
   };
 
   const handleOpenDialog = () => {
+    setDialogDate(scheduledAt ? formatLocalDate(calendarDateToJsDate(scheduledAt.date)) : getCurrentDateString());
+    setDialogTime(getCurrentTimeString());
     setIsDialogOpen(true);
   };
 
@@ -296,7 +310,21 @@ const AppContent: React.FC = () => {
     const key = p === 'x' ? (t === 'p' ? 'xp' : 'xr') : (t === 'p' ? 'lp' : 'lr');
 
     // Target date: scheduled date or today in local time
-    const targetDate = scheduledAt ? calendarDateToJsDate(scheduledAt.date) : new Date();
+    let targetDate = new Date();
+    if (scheduledAt) {
+      targetDate = calendarDateToJsDate(scheduledAt.date);
+    } else if (dialogDate) {
+      const parts = dialogDate.split('-').map(Number);
+      if (parts.length === 3) {
+        targetDate = new Date(parts[0], parts[1] - 1, parts[2]);
+      }
+    }
+    if (dialogTime) {
+      const tParts = dialogTime.split(':').map(Number);
+      if (tParts.length >= 2) {
+        targetDate.setHours(tParts[0] || 0, tParts[1] || 0, 0, 0);
+      }
+    }
     const targetDateStr = formatLocalDate(targetDate);
 
     // Update in-memory D array at matching date index
@@ -649,6 +677,28 @@ const AppContent: React.FC = () => {
             aria-label="Activity type"
           />
         </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="fld">
+            Date
+            <input
+              type="date"
+              id="a_date"
+              value={dialogDate}
+              onChange={(e) => setDialogDate(e.target.value)}
+              className="w-full h-[40px] px-3 rounded-[10px] border border-[var(--line)] text-[13px] bg-white text-[var(--ink)]"
+            />
+          </label>
+          <label className="fld">
+            Post Time (when published)
+            <input
+              type="time"
+              id="a_time"
+              value={dialogTime}
+              onChange={(e) => setDialogTime(e.target.value)}
+              className="w-full h-[40px] px-3 rounded-[10px] border border-[var(--line)] text-[13px] font-mono bg-white text-[var(--ink)]"
+            />
+          </label>
+        </div>
         <div className="fld">
           <NumberField
             id="a_n"

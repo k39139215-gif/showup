@@ -164,6 +164,8 @@ export const ContentPage: React.FC<ContentPageProps> = ({
     views: number;
     likes: number;
     replies: number;
+    date: string;
+    time: string;
   }>({
     text: '',
     p: 'x',
@@ -172,11 +174,16 @@ export const ContentPage: React.FC<ContentPageProps> = ({
     views: 0,
     likes: 0,
     replies: 0,
+    date: '',
+    time: '',
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const handleOpenEdit = (item: ContentItem) => {
     setEditingItem(item);
+    const d = item.date && !isNaN(item.date.getTime()) ? item.date : new Date();
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     setEditForm({
       text: item.text,
       p: item.p,
@@ -185,13 +192,39 @@ export const ContentPage: React.FC<ContentPageProps> = ({
       views: item.views,
       likes: item.likes,
       replies: item.replies,
+      date: dateStr,
+      time: timeStr,
     });
   };
 
   const handleSaveEdit = async () => {
     if (!editingItem) return;
     setIsSavingEdit(true);
-    const success = await updateContentItem(editingItem, editForm);
+
+    let updatedDate = editingItem.date && !isNaN(editingItem.date.getTime()) ? new Date(editingItem.date) : new Date();
+    if (editForm.date) {
+      const parts = editForm.date.split('-').map(Number);
+      if (parts.length === 3) {
+        updatedDate = new Date(parts[0], parts[1] - 1, parts[2]);
+      }
+    }
+    if (editForm.time) {
+      const tParts = editForm.time.split(':').map(Number);
+      if (tParts.length >= 2) {
+        updatedDate.setHours(tParts[0] || 0, tParts[1] || 0, 0, 0);
+      }
+    }
+
+    const success = await updateContentItem(editingItem, {
+      text: editForm.text,
+      p: editForm.p,
+      type: editForm.type,
+      topic: editForm.topic,
+      views: editForm.views,
+      likes: editForm.likes,
+      replies: editForm.replies,
+      date: updatedDate,
+    });
     setIsSavingEdit(false);
     if (success) {
       toast.success('Post updated');
@@ -356,6 +389,14 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                           <span>{`${c.p === 'li' ? 'LinkedIn' : 'X'} · ${c.type}`}</span>
                           <span>·</span>
                           <span>{`#${c.topic}`}</span>
+                          {c.date && !isNaN(c.date.getTime()) && (
+                            <>
+                              <span>·</span>
+                              <span className="text-[11px] text-neutral-400 font-mono">
+                                {c.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </>
+                          )}
                         </div>
                         <Dropdown>
                           <DropdownTrigger
@@ -496,9 +537,16 @@ export const ContentPage: React.FC<ContentPageProps> = ({
                   </div>
                 </div>
                 <div style={{ marginTop: '10px' }}>
-                  <span className="tag">{`${selectedItem.p === 'li' ? 'LinkedIn' : 'X'} · ${selectedItem.type}`}</span>{' '}
-                  <span className="tag">{`#${selectedItem.topic}`}</span>
-                  <p style={{ lineHeight: 1.55, marginTop: '6px' }}>{selectedItem.text}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                    <span className="tag">{`${selectedItem.p === 'li' ? 'LinkedIn' : 'X'} · ${selectedItem.type}`}</span>{' '}
+                    <span className="tag">{`#${selectedItem.topic}`}</span>
+                    {selectedItem.date && !isNaN(selectedItem.date.getTime()) && (
+                      <span className="text-[11.5px] text-neutral-500 font-mono ml-auto">
+                        {selectedItem.date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at {selectedItem.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ lineHeight: 1.55 }}>{selectedItem.text}</p>
                 </div>
                 <div className="pg">
                   <div>
@@ -675,6 +723,28 @@ export const ContentPage: React.FC<ContentPageProps> = ({
           />
         </label>
 
+        <div className="grid grid-cols-2 gap-3">
+          <label className="fld">
+            Date
+            <input
+              type="date"
+              id="edit_date"
+              value={editForm.date}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, date: e.target.value }))}
+              className="w-full h-[40px] px-3 rounded-[10px] border border-[var(--line)] text-[13px] bg-white text-[var(--ink)]"
+            />
+          </label>
+          <label className="fld">
+            Post Time (when published)
+            <input
+              type="time"
+              id="edit_time"
+              value={editForm.time}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, time: e.target.value }))}
+              className="w-full h-[40px] px-3 rounded-[10px] border border-[var(--line)] text-[13px] font-mono bg-white text-[var(--ink)]"
+            />
+          </label>
+        </div>
         <div className="grid grid-cols-3 gap-2.5">
           <div className="fld">
             <span className="text-[12px] font-medium text-neutral-600">Views</span>
