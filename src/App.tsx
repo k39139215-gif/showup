@@ -85,6 +85,7 @@ const AppContent: React.FC = () => {
   const [, setTick] = useState<number>(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const viewRef = useRef<HTMLDivElement>(null);
   const { scheduledAt, setRange, setSingleDate, refreshData } = useDateRangeStore();
@@ -107,6 +108,25 @@ const AppContent: React.FC = () => {
   const [dialogDate, setDialogDate] = useState<string>(getCurrentDateString);
   const [dialogTime, setDialogTime] = useState<string>(getCurrentTimeString);
 
+
+  // Supabase Auth session listener
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+      }
+    });
+
+    const {
+      data: { subscription: authListener },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user || null);
+    });
+
+    return () => {
+      authListener.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     // Initial fetch from Supabase
@@ -545,16 +565,41 @@ const AppContent: React.FC = () => {
           </div>
         </div>
         <div className="user flex items-center gap-2.5">
-          <Avatar size="md" initials="KS" color="neutral" className="av" />
+          <Avatar
+            size="md"
+            src={currentUser?.user_metadata?.avatar_url}
+            initials={
+              currentUser?.user_metadata?.full_name
+                ? currentUser.user_metadata.full_name
+                    .split(' ')
+                    .map((n: string) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()
+                : currentUser?.email
+                ? currentUser.email.slice(0, 2).toUpperCase()
+                : 'KB'
+            }
+            color="neutral"
+            className="av"
+          />
           <div className="flex-1 min-w-0">
-            <b style={{ fontWeight: 500 }} className="truncate block">Kartik Sharma</b>
-            <small className="truncate block">Asia/Kolkata</small>
+            <b style={{ fontWeight: 500 }} className="truncate block">
+              {currentUser?.user_metadata?.full_name ||
+                currentUser?.user_metadata?.name ||
+                (currentUser?.email ? currentUser.email.split('@')[0] : 'Kartik Bhosale')}
+            </b>
+            <small className="truncate block text-[11px] text-[#6b7280]">
+              {currentUser?.email || '@kartikBhosaleHQ'}
+            </small>
           </div>
           <TooltipTrigger delay={100}>
             <button
               id={isDrawer ? 'lo-drawer' : 'lo'}
               title="Sign out"
-              onClick={() => {
+              onClick={async () => {
+                await supabase.auth.signOut();
+                setCurrentUser(null);
                 window.location.hash = '#login';
                 if (isDrawer) setIsSidebarOpen(false);
               }}

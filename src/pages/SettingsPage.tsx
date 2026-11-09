@@ -10,6 +10,7 @@ import { FileUpload } from '../components/base/file-upload/file-upload';
 import { TagGroup, Tag } from '../components/base/tag-group/tag-group';
 import { TOPICS } from '../data';
 import { TIMEZONE_OPTIONS } from '../utils/dateMath';
+import { getLinkedInAuthUrl } from '../services/linkedinService';
 
 interface SettingsPageProps {
   tab: string;
@@ -31,13 +32,71 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   const [streakAlerts, setStreakAlerts] = useState(true);
   const [monitoredTopics, setMonitoredTopics] = useState<string[]>(() => [...TOPICS]);
 
-  // URL-synced tab state (?tab=goals)
+  // Social account integration state
+  const [xHandle, setXHandle] = useState<string>(() => localStorage.getItem('verasett_x_handle') || 'kartikBhosaleHQ');
+  const [isXConnected, setIsXConnected] = useState<boolean>(() => localStorage.getItem('verasett_x_connected') !== 'false');
+  const [isLinkedInConnected, setIsLinkedInConnected] = useState<boolean>(() => localStorage.getItem('verasett_li_connected') === 'true');
+  const [isConnectingLi, setIsConnectingLi] = useState<boolean>(false);
+
+  // URL-synced tab state (?tab=goals) & LinkedIn OAuth callback detection
   useEffect(() => {
-    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlTab = urlParams.get('tab');
     if (urlTab && ['profile', 'goals', 'acct'].includes(urlTab) && urlTab !== tab) {
       setTab(urlTab);
     }
+
+    // Check if returning from LinkedIn OAuth
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    if (code && state) {
+      const savedState = localStorage.getItem('linkedin_oauth_state');
+      if (state === savedState) {
+        localStorage.setItem('verasett_li_connected', 'true');
+        setIsLinkedInConnected(true);
+        toast.success('LinkedIn Connected!', {
+          description: 'Your LinkedIn account has been successfully linked to your workspace.',
+        });
+        // Clean URL query
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('code');
+        cleanUrl.searchParams.delete('state');
+        window.history.replaceState({}, '', cleanUrl.toString());
+      }
+    }
   }, []);
+
+  const handleConnectLinkedIn = () => {
+    setIsConnectingLi(true);
+    const redirectUri = `${window.location.origin}${window.location.pathname}?tab=acct#settings`;
+    const authUrl = getLinkedInAuthUrl(redirectUri);
+    window.location.href = authUrl;
+  };
+
+  const handleDisconnectLinkedIn = () => {
+    localStorage.removeItem('verasett_li_connected');
+    localStorage.removeItem('linkedin_oauth_state');
+    setIsLinkedInConnected(false);
+    toast.info('LinkedIn Disconnected', {
+      description: 'Your LinkedIn account has been disconnected.',
+    });
+  };
+
+  const handleSaveXHandle = () => {
+    const clean = xHandle.replace(/^@/, '').trim();
+    localStorage.setItem('verasett_x_handle', clean);
+    localStorage.setItem('verasett_x_connected', 'true');
+    setIsXConnected(true);
+    toast.success('X Profile Linked', {
+      description: `Linked @${clean} to your workspace.`,
+    });
+  };
+
+  const handleDisconnectX = () => {
+    localStorage.setItem('verasett_x_connected', 'false');
+    setIsXConnected(false);
+    toast.info('X Profile Disconnected');
+  };
 
   const handleTabChange = (newTab: string) => {
     setTab(newTab);
@@ -190,17 +249,111 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
           )}
 
           {tab === 'acct' && (
-            <>
-              <div className="acct">
-                <span>{badge('x')}X profile</span>
-                <span className="pill nu">Connected (@kartik)</span>
+            <div className="flex flex-col gap-4">
+              {/* X Profile Card */}
+              <div className="p-4 rounded-xl border border-[var(--line)] bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center font-bold text-sm">
+                    𝕏
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <b className="text-[14px]">X (Twitter) Profile</b>
+                      {isXConnected ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Connected
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                          Disconnected
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12.5px] text-[#6b7280] mt-0.5">
+                      Syncs public original posts, impressions, and metrics via Zero-Ban guest gateway.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">@</span>
+                    <input
+                      type="text"
+                      className="pl-6 pr-3 py-1.5 text-xs rounded-lg border border-[var(--line)] w-[150px] font-mono"
+                      value={xHandle}
+                      onChange={(e) => setXHandle(e.target.value)}
+                      placeholder="username"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn text-xs py-1.5 px-3 h-auto"
+                    onClick={handleSaveXHandle}
+                  >
+                    Save & Sync
+                  </button>
+                  {isXConnected && (
+                    <button
+                      type="button"
+                      className="btn ghost text-xs py-1.5 px-2.5 h-auto text-red-600 hover:bg-red-50"
+                      onClick={handleDisconnectX}
+                    >
+                      Disconnect
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="acct">
-                <span>{badge('li')}LinkedIn profile</span>
-                <span className="pill nu">Connected (/in/kartik)</span>
+
+              {/* LinkedIn OAuth Card */}
+              <div className="p-4 rounded-xl border border-[var(--line)] bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#0077b5] text-white flex items-center justify-center font-bold text-sm">
+                    in
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <b className="text-[14px]">LinkedIn Integration</b>
+                      {isLinkedInConnected ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Connected
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                          Not Connected
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12.5px] text-[#6b7280] mt-0.5">
+                      Connect via official LinkedIn OAuth 2.0 to sync member posts, shares, and reactions.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isLinkedInConnected ? (
+                    <button
+                      type="button"
+                      className="btn ghost text-xs py-1.5 px-3 h-auto text-red-600 hover:bg-red-50 border border-red-200"
+                      onClick={handleDisconnectLinkedIn}
+                    >
+                      Disconnect LinkedIn
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn text-xs py-1.5 px-3.5 h-auto bg-[#0077b5] hover:bg-[#006097] text-white border-0 flex items-center gap-1.5"
+                      onClick={handleConnectLinkedIn}
+                      disabled={isConnectingLi}
+                    >
+                      {isConnectingLi ? 'Redirecting...' : 'Connect with LinkedIn'}
+                    </button>
+                  )}
+                </div>
               </div>
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>
+
+              <div style={{ marginTop: '16px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>
                   Bulk import activities (CSV)
                 </h4>
                 <p className="muted" style={{ fontSize: '12.5px', marginBottom: '12px' }}>
@@ -210,12 +363,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                   allowedExtensions={['csv']}
                   onUploadComplete={(file) => {
                     toast.success(`Imported ${file.name}`, {
-                      description: 'Parsed 42 activities successfully from CSV.',
+                      description: 'Parsed activities successfully from CSV.',
                     });
                   }}
                 />
               </div>
-            </>
+            </div>
           )}
         </Tray>
       </div>
