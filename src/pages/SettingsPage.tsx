@@ -77,7 +77,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
 
   const handleConnectLinkedIn = () => {
     setIsConnectingLi(true);
-    const redirectUri = `${window.location.origin}${window.location.pathname}?tab=acct#settings`;
+    const redirectUri = `${window.location.origin}${window.location.pathname}`;
     const authUrl = getLinkedInAuthUrl(redirectUri);
     window.location.href = authUrl;
   };
