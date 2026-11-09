@@ -93,7 +93,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
 
   const handleSaveXHandle = () => {
     if (syncCooldown > 0) {
-      toast.warning('Rate limit active', {
+      toast.info('Rate limit active', {
         description: `Please wait ${syncCooldown}s before syncing again to respect Twitter API rate limits.`,
       });
       return;
