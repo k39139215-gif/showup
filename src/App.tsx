@@ -459,9 +459,9 @@ const AppContent: React.FC = () => {
     <aside className={isDrawer ? 'drawer-aside' : 'desktop-sidebar'}>
       <div className="brand" style={{ justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div className="logo">V</div>
+          <div className="logo">S</div>
           <div>
-            <b>Verasett</b>
+            <b>ShowUp</b>
             <small>Social Activity</small>
           </div>
         </div>
@@ -652,7 +652,7 @@ const AppContent: React.FC = () => {
                 <Icon name="menu" size={18} />
               </button>
               <Breadcrumb aria-label="Breadcrumb">
-                <BreadcrumbItem href="#today">Verasett</BreadcrumbItem>
+                <BreadcrumbItem href="#today">ShowUp</BreadcrumbItem>
                 <BreadcrumbItem current>
                   <b id="crumb">{activePageTitle}</b>
                 </BreadcrumbItem>

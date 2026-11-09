@@ -103,9 +103,9 @@ export const LoginPage: React.FC = () => {
     <section className="login" id="login">
       <div className="lf">
         <div className="brand">
-          <div className="logo">V</div>
+          <div className="logo">S</div>
           <div>
-            <b>Verasett</b>
+            <b>ShowUp</b>
             <small>Social Radar</small>
           </div>
         </div>
