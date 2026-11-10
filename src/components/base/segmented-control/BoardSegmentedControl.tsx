@@ -35,7 +35,7 @@ export function BoardSegmentedControl<T extends string = string>({
             onChange(String(first) as T);
           }
         }}
-        className="h-[40px] items-center p-1 bg-[var(--tray)] rounded-xl border border-[var(--line)] box-border"
+        className="h-[34px] items-center p-0.5 bg-[var(--tray)] rounded-lg border border-[var(--line)] box-border"
       >
         {options.map((opt) => (
           <SegmentedControlItem

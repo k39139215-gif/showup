@@ -420,7 +420,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
             onChange={setCq}
             shape="rounded"
             className="flex-1 min-w-[280px]"
-            fieldClassName="h-[40px] rounded-xl border border-[var(--line)] focus-within:border-transparent bg-white text-[13px] px-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+            fieldClassName="h-[34px] rounded-lg border border-[var(--line)] focus-within:border-transparent bg-white text-[12.5px] px-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
           />
 
           <BoardSelect
@@ -446,7 +446,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
             <button
               type="button"
               id="bui-filter-toggle"
-              className={`flex items-center gap-2 h-[40px] px-3.5 rounded-xl border text-[13px] font-medium transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 h-[34px] px-3 rounded-lg border text-[12.5px] font-medium transition-all cursor-pointer ${
                 isFilterPanelOpen || totalActiveFilters > 0
                   ? 'bg-[#111111] text-white border-[#111111] shadow-xs'
                   : 'bg-white text-[#2b2b2f] border-[var(--line)] hover:bg-[#faf9f6] shadow-[0_1px_2px_rgba(0,0,0,0.04)]'

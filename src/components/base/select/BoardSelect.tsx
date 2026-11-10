@@ -51,7 +51,7 @@ export function BoardSelect<T extends string = string>({
       size={size}
       className={cx('inline-block', className)}
       triggerClassName={cx(
-        'h-[40px] rounded-xl border border-[var(--line)] bg-white text-[13px] font-medium text-[var(--ink)]',
+        'h-[34px] rounded-lg border border-[var(--line)] bg-white text-[12.5px] font-medium text-[var(--ink)]',
         'inline-flex items-center cursor-pointer transition-colors hover:bg-[#faf9f6] outline-none',
         'box-border shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
         isFixed ? 'w-full justify-between px-3' : 'px-3 gap-2',

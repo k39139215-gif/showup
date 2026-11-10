@@ -553,7 +553,7 @@ export const UnifiedDatePicker: React.FC = () => {
         id="dt"
         onClick={() => setIsOpen(!isOpen)}
         className={cx(
-          'h-[40px] px-3.5 rounded-xl border border-[var(--line)] bg-white text-[13px] font-medium text-[var(--ink)]',
+          'h-[34px] px-3 rounded-lg border border-[var(--line)] bg-white text-[12.5px] font-medium text-[var(--ink)]',
           'inline-flex items-center gap-2 cursor-pointer transition-colors hover:bg-[#faf9f6] outline-none',
           'box-border shadow-[0_1px_2px_rgba(0,0,0,0.04)] select-none',
           isOpen && 'ring-2 ring-[var(--line)]'
