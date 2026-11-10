@@ -289,69 +289,68 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                   />
                 </label>
               </div>
-              <div className="mt-6 border border-[var(--line)] rounded-xl p-4 bg-[var(--app-bg)]/50">
+              <div className="mt-5 border border-[var(--line)] rounded-xl p-3.5 bg-[var(--app-bg)]/40">
+                {/* Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-base">🔔</span>
-                    <b className="text-[14px] font-semibold text-[var(--ink)]">Email Notifications & Real-Time Streak Alerts</b>
+                    <span className="text-[15px]">🔔</span>
+                    <b className="text-[13.5px] font-semibold text-[var(--ink)]">Notifications & Automated Weekly Digest</b>
                   </div>
-                  <span className="text-[11px] font-mono text-[var(--mute)] bg-[var(--shell)] px-2 py-0.5 rounded-full border border-[var(--line)]">
-                    Asia/Kolkata 24h
+                  <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Active (Every Sun 10:00 AM)</span>
                   </span>
                 </div>
 
-                <p className="text-[12.5px] text-[var(--ink-2)] mb-4 leading-relaxed">
-                  Real emails and desktop alerts keep you accountable to your daily posting and outbound reply quotas.
-                </p>
-
-                {/* Recipient Email Input */}
-                <div className="mb-4">
-                  <label className="text-[12px] font-medium text-[var(--ink-2)] block mb-1.5">
-                    Alert Recipient Email
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="email"
-                      value={recipientEmail}
-                      onChange={(e) => setRecipientEmail(e.target.value)}
-                      placeholder="your.email@example.com"
-                      className="flex-1 px-3 py-2 text-[13px] rounded-lg border border-[var(--line)] bg-[#fff] text-[var(--ink)] focus:outline-none focus:border-[#FF702E]"
-                    />
+                {/* Recipient Email Inline */}
+                <div className="flex items-center justify-between py-2 border-b border-[var(--line)]/60 text-[12.5px]">
+                  <span className="text-[var(--mute)]">Recipient</span>
+                  <div className="flex items-center gap-2 font-medium text-[var(--ink)]">
+                    <span>{recipientEmail}</span>
                     <button
                       type="button"
-                      onClick={handleSaveEmail}
-                      className="px-3.5 py-2 text-[12.5px] font-medium rounded-lg bg-[var(--shell)] hover:bg-[#eae8e3] text-[var(--ink)] border border-[var(--line)] transition-all shrink-0 cursor-pointer"
+                      onClick={() => {
+                        const newMail = prompt('Enter new recipient email:', recipientEmail);
+                        if (newMail && newMail.includes('@')) {
+                          setRecipientEmail(newMail);
+                          saveNotificationSettings({ recipientEmail: newMail });
+                          toast.success('Recipient updated', { description: newMail });
+                        }
+                      }}
+                      className="text-[11.5px] text-[#FF702E] hover:underline cursor-pointer"
                     >
-                      Save Email
+                      Change
                     </button>
                   </div>
                 </div>
 
-                {/* Switches */}
-                <div className="flex flex-col gap-3 py-3 border-y border-[var(--line)]">
+                {/* Toggles */}
+                <div className="flex flex-col gap-2.5 py-3 border-b border-[var(--line)]/60">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-[13px] font-medium text-[var(--ink)]">Real-time streak alerts</div>
-                      <div className="text-[11.5px] text-[var(--mute)]">Email & system alert when today's goal is met or at risk before midnight</div>
+                      <div className="text-[12.5px] font-medium text-[var(--ink)]">Weekly email digest summary</div>
+                      <div className="text-[11px] text-[var(--mute)]">Delivered automatically every Sunday at 10:00 AM IST</div>
                     </div>
-                    <Switch isSelected={notifSettings.streakAlerts} onChange={handleToggleStreakAlerts} aria-label="Real-time streak alerts" />
+                    <Switch isSelected={notifSettings.emailDigest} onChange={handleToggleDigest} aria-label="Weekly digest" />
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-[13px] font-medium text-[var(--ink)]">Weekly email digest summary</div>
-                      <div className="text-[11.5px] text-[var(--mute)]">Weekly recap of posts, replies, and impressions delivered every Sunday</div>
+                      <div className="text-[12.5px] font-medium text-[var(--ink)]">Real-time streak alerts</div>
+                      <div className="text-[11px] text-[var(--mute)]">Email & system alerts before midnight boundary</div>
                     </div>
-                    <Switch isSelected={notifSettings.emailDigest} onChange={handleToggleDigest} aria-label="Weekly email digest summary" />
+                    <Switch isSelected={notifSettings.streakAlerts} onChange={handleToggleStreakAlerts} aria-label="Streak alerts" />
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-[13px] font-medium text-[var(--ink)]">Desktop OS notifications</div>
-                      <div className="text-[11.5px] text-[var(--mute)]">
-                        Status: <span className={desktopPermission === 'granted' ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'}>
-                          {desktopPermission === 'granted' ? 'Granted (Active)' : 'Not Enabled'}
-                        </span>
+                      <div className="text-[12.5px] font-medium text-[var(--ink)]">Desktop OS notifications</div>
+                      <div className="text-[11px] text-[var(--mute)]">
+                        {desktopPermission === 'granted' ? (
+                          <span className="text-emerald-600 font-medium">Active (Granted)</span>
+                        ) : (
+                          <span className="text-amber-600 font-medium">Click button to allow</span>
+                        )}
                       </div>
                     </div>
                     {desktopPermission === 'granted' ? (
@@ -360,100 +359,82 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                       <button
                         type="button"
                         onClick={handleRequestDesktop}
-                        className="px-2.5 py-1 text-[11.5px] font-medium rounded-md bg-[#FF702E]/10 text-[#DE4205] border border-[#FF702E]/30 hover:bg-[#FF702E]/20 transition-all cursor-pointer"
+                        className="px-2 py-0.5 text-[11px] font-medium rounded bg-[#FF702E]/10 text-[#DE4205] border border-[#FF702E]/30 hover:bg-[#FF702E]/20 transition-all cursor-pointer"
                       >
-                        Enable OS Alerts
+                        Enable
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Dispatch Trigger Actions */}
-                <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                  <button
-                    type="button"
-                    disabled={isSendingEmail}
-                    onClick={handleSendTestStreakAlert}
-                    className="px-3.5 py-2 text-[12.5px] font-semibold rounded-lg bg-gradient-to-r from-[#FF702E] to-[#DE4205] text-[#fff] shadow-[0_2px_6px_rgba(222,66,5,0.25)] hover:opacity-95 active:scale-98 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <span>🔥</span>
-                    <span>{isSendingEmail ? 'Sending Alert...' : 'Send Test Streak Email Now'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={isSendingEmail}
-                    onClick={handleSendTestWeeklyDigest}
-                    className="px-3 py-2 text-[12.5px] font-medium rounded-lg bg-[#fff] text-[var(--ink)] border border-[var(--line)] hover:bg-[var(--shell)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <span>📊</span>
-                    <span>Send Weekly Digest</span>
-                  </button>
-
-                  {emailLogs.length > 0 && (
+                {/* Actions & Compact Key Config */}
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setSelectedPreviewLog(emailLogs[0])}
-                      className="px-3 py-2 text-[12px] font-medium rounded-lg text-[var(--mute)] hover:text-[var(--ink)] transition-all underline ml-auto cursor-pointer"
+                      disabled={isSendingEmail}
+                      onClick={handleSendTestStreakAlert}
+                      className="px-3 py-1.5 text-[12px] font-semibold rounded-lg bg-gradient-to-r from-[#FF702E] to-[#DE4205] text-[#fff] shadow-xs hover:opacity-95 active:scale-98 transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
                     >
-                      View Dispatch Log ({emailLogs.length})
+                      <span>🔥</span>
+                      <span>{isSendingEmail ? 'Sending...' : 'Send Test Alert'}</span>
                     </button>
-                  )}
+
+                    <button
+                      type="button"
+                      disabled={isSendingEmail}
+                      onClick={handleSendTestWeeklyDigest}
+                      className="px-2.5 py-1.5 text-[12px] font-medium rounded-lg bg-[#fff] text-[var(--ink)] border border-[var(--line)] hover:bg-[var(--shell)] transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      <span>📊</span>
+                      <span>Weekly Digest</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedEmail(!showAdvancedEmail)}
+                    className="text-[11.5px] text-[var(--mute)] hover:text-[var(--ink)] flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>{showAdvancedEmail ? 'Hide API Key' : 'Configure Key'}</span>
+                    <span>⚙️</span>
+                  </button>
                 </div>
 
-                {/* Automated Cron & Email Provider Key */}
-                <div className="mt-4 pt-4 border-t border-[var(--line)]">
-                  <div className="flex items-center justify-between mb-2">
-                    <b className="text-[12.5px] text-[var(--ink)] flex items-center gap-1.5">
-                      <span>⚡</span> Automated Cloud Delivery Setup
-                    </b>
-                    <span className="text-[10.5px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                      GitHub Actions: Every Sun 10:00 AM IST
-                    </span>
-                  </div>
-                  <p className="text-[12px] text-[var(--mute)] mb-3 leading-relaxed">
-                    Browser band hone ke baad automated emails bhejne ke liye cloud cron job configured hai. Asal Gmail inbox me deliver hone ke liye apna free <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-[#FF702E] underline font-medium">Resend.com API Key</a> yahan paste karein:
-                  </p>
-                  
-                  <div className="p-3 rounded-xl bg-[#fff] border border-[var(--line)] flex flex-col gap-2.5 shadow-xs">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-[11.5px] font-medium text-[var(--ink)]">
-                          Resend API Key (<span className="font-mono text-[#de4205]">re_...</span>)
-                        </label>
-                        <a
-                          href="https://resend.com/api-keys"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[11px] text-[#FF702E] hover:underline"
-                        >
-                          Get Free Key (3,000 emails/mo) →
-                        </a>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="password"
-                          value={resendApiKey}
-                          onChange={(e) => setResendApiKey(e.target.value)}
-                          placeholder="re_123456789abcdef..."
-                          className="flex-1 px-2.5 py-1.5 text-[12px] rounded-lg border border-[var(--line)] font-mono text-[var(--ink)] focus:outline-none focus:border-[#FF702E]"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleSaveAdvanced}
-                          className="px-3 py-1.5 text-[11.5px] font-medium rounded-lg bg-[var(--ink)] text-[#fff] shrink-0 hover:opacity-90 cursor-pointer"
-                        >
-                          Save Key
-                        </button>
-                      </div>
+                {/* Collapsible Key Config */}
+                {showAdvancedEmail && (
+                  <div className="mt-3 p-3 rounded-lg bg-[#fff] border border-[var(--line)] flex flex-col gap-2 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11.5px] font-medium text-[var(--ink)]">
+                        Resend API Key (<span className="font-mono text-[#de4205]">re_...</span>)
+                      </label>
+                      <a
+                        href="https://resend.com/api-keys"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] text-[#FF702E] hover:underline"
+                      >
+                        Resend Dashboard →
+                      </a>
                     </div>
-
-                    <div className="text-[11px] text-[var(--mute)] flex items-center gap-1 pt-1">
-                      <span>💡</span>
-                      <span>Key save karne ke baad direct aapke email par live authenticated delivery activate ho jayegi.</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="password"
+                        value={resendApiKey}
+                        onChange={(e) => setResendApiKey(e.target.value)}
+                        placeholder="re_..."
+                        className="flex-1 px-2.5 py-1.5 text-[12px] rounded-md border border-[var(--line)] font-mono text-[var(--ink)] focus:outline-none focus:border-[#FF702E]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveAdvanced}
+                        className="px-3 py-1.5 text-[11.5px] font-medium rounded-md bg-[var(--ink)] text-[#fff] shrink-0 cursor-pointer"
+                      >
+                        Save
+                      </button>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Email Preview Modal */}
