@@ -227,7 +227,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
         });
         onSaveTargets();
       } else {
-        toast.warning('X Profile Linked', { description: res.message || 'Data will refresh on next scheduled sync.' });
+        toast.info('X Profile Linked', { description: res.message || 'Data will refresh on next scheduled sync.' });
       }
     } catch (err: any) {
       setIsSyncingX(false);
