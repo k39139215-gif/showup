@@ -1,0 +1,36 @@
+name: Automated Weekly ShowUp Digest
+
+on:
+  schedule:
+    # Runs every Sunday at 10:00 AM IST (04:30 UTC)
+    - cron: '30 4 * * 0'
+  workflow_dispatch:
+    # Allows manual trigger anytime from GitHub Actions tab
+    inputs:
+      recipient:
+        description: 'Recipient Email'
+        required: false
+        default: 'k39139215@gmail.com'
+
+jobs:
+  send-weekly-email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install @supabase/supabase-js
+
+      - name: Dispatch Weekly Digest Email
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RECIPIENT_EMAIL: ${{ github.event.inputs.recipient || secrets.RECIPIENT_EMAIL || 'k39139215@gmail.com' }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://xsexkrxlyirnnroxenjl.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_Na9A_qM6aFzYgPYsaQktmQ_D6O-C-e7' }}
+        run: node scripts/send-weekly-digest.mjs

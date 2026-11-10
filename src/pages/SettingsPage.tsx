@@ -401,52 +401,58 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                   )}
                 </div>
 
-                {/* Advanced Webhook / Custom API toggle */}
-                <div className="mt-3.5 pt-3 border-t border-[var(--line)]/60">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvancedEmail(!showAdvancedEmail)}
-                    className="text-[11.5px] text-[var(--mute)] hover:text-[var(--ink)] flex items-center gap-1 font-medium cursor-pointer"
-                  >
-                    <span>{showAdvancedEmail ? '▼' : '▶'}</span>
-                    <span>Custom Resend API / Webhook Settings (Optional)</span>
-                  </button>
-
-                  {showAdvancedEmail && (
-                    <div className="mt-2.5 p-3 rounded-lg bg-[#fff] border border-[var(--line)] flex flex-col gap-2.5">
-                      <div>
-                        <label className="text-[11px] font-medium text-[var(--mute)] block mb-1">
-                          Resend API Key (Optional)
+                {/* Automated Cron & Email Provider Key */}
+                <div className="mt-4 pt-4 border-t border-[var(--line)]">
+                  <div className="flex items-center justify-between mb-2">
+                    <b className="text-[12.5px] text-[var(--ink)] flex items-center gap-1.5">
+                      <span>⚡</span> Automated Cloud Delivery Setup
+                    </b>
+                    <span className="text-[10.5px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      GitHub Actions: Every Sun 10:00 AM IST
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-[var(--mute)] mb-3 leading-relaxed">
+                    Browser band hone ke baad automated emails bhejne ke liye cloud cron job configured hai. Asal Gmail inbox me deliver hone ke liye apna free <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-[#FF702E] underline font-medium">Resend.com API Key</a> yahan paste karein:
+                  </p>
+                  
+                  <div className="p-3 rounded-xl bg-[#fff] border border-[var(--line)] flex flex-col gap-2.5 shadow-xs">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11.5px] font-medium text-[var(--ink)]">
+                          Resend API Key (<span className="font-mono text-[#de4205]">re_...</span>)
                         </label>
+                        <a
+                          href="https://resend.com/api-keys"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] text-[#FF702E] hover:underline"
+                        >
+                          Get Free Key (3,000 emails/mo) →
+                        </a>
+                      </div>
+                      <div className="flex items-center gap-2">
                         <input
                           type="password"
                           value={resendApiKey}
                           onChange={(e) => setResendApiKey(e.target.value)}
-                          placeholder="re_..."
-                          className="w-full px-2.5 py-1.5 text-[12px] rounded border border-[var(--line)] font-mono text-[var(--ink)]"
+                          placeholder="re_123456789abcdef..."
+                          className="flex-1 px-2.5 py-1.5 text-[12px] rounded-lg border border-[var(--line)] font-mono text-[var(--ink)] focus:outline-none focus:border-[#FF702E]"
                         />
+                        <button
+                          type="button"
+                          onClick={handleSaveAdvanced}
+                          className="px-3 py-1.5 text-[11.5px] font-medium rounded-lg bg-[var(--ink)] text-[#fff] shrink-0 hover:opacity-90 cursor-pointer"
+                        >
+                          Save Key
+                        </button>
                       </div>
-                      <div>
-                        <label className="text-[11px] font-medium text-[var(--mute)] block mb-1">
-                          Webhook URL (Discord / Slack / Zapier / n8n)
-                        </label>
-                        <input
-                          type="url"
-                          value={webhookUrl}
-                          onChange={(e) => setWebhookUrl(e.target.value)}
-                          placeholder="https://..."
-                          className="w-full px-2.5 py-1.5 text-[12px] rounded border border-[var(--line)] font-mono text-[var(--ink)]"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleSaveAdvanced}
-                        className="self-end px-3 py-1.5 text-[11.5px] font-medium rounded bg-[var(--ink)] text-[#fff] cursor-pointer"
-                      >
-                        Save API Settings
-                      </button>
                     </div>
-                  )}
+
+                    <div className="text-[11px] text-[var(--mute)] flex items-center gap-1 pt-1">
+                      <span>💡</span>
+                      <span>Key save karne ke baad direct aapke email par live authenticated delivery activate ho jayegi.</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
