@@ -35,7 +35,7 @@ export function BoardSegmentedControl<T extends string = string>({
             onChange(String(first) as T);
           }
         }}
-        className="h-[34px] items-center p-0.5 bg-[var(--tray)] rounded-lg border border-[var(--line)] box-border"
+        className="h-[34px] p-[3px] bg-[var(--tray)] rounded-[10px] border border-[var(--line)] inline-flex items-center gap-1 box-border"
       >
         {options.map((opt) => (
           <SegmentedControlItem
@@ -45,10 +45,10 @@ export function BoardSegmentedControl<T extends string = string>({
             data-p={opt.value}
             data-m={opt.value}
             className={cx(
-              'h-[32px] px-3 rounded-lg text-[13px] font-medium transition-colors cursor-pointer select-none',
+              'h-[26px] px-3 rounded-[7px] text-[12px] font-medium flex items-center justify-center transition-all cursor-pointer select-none border-0 outline-none',
               opt.value === value
-                ? 'bg-white text-[var(--ink)] font-semibold shadow-xs on'
-                : 'text-[var(--ink-2)] hover:text-[var(--ink)]'
+                ? 'bg-white text-[var(--ink)] font-semibold shadow-[0_1px_2px_rgba(0,0,0,0.06)] on'
+                : 'text-[var(--mute)] hover:text-[var(--ink)] bg-transparent'
             )}
           >
             {opt.label}

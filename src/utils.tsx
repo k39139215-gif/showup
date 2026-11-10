@@ -18,7 +18,8 @@ export const I: Record<string, string> = {
   trend: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   menu: '<path d="M3 12h18M3 6h18M3 18h18"/>',
-  close: '<path d="M18 6L6 18M6 6l12 12"/>'
+  close: '<path d="M18 6L6 18M6 6l12 12"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>'
 };
 
 export const ic = (n: string, s: number = 16) =>

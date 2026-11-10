@@ -276,7 +276,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                     𝕏
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <b className="text-[14px]">X (Twitter) Profile</b>
                       {isXConnected ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -294,7 +294,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <div className="relative">
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">@</span>
                     <input
@@ -307,7 +307,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                   </div>
                   <button
                     type="button"
-                    className="btn text-xs py-1.5 px-3 h-auto"
+                    className="btn text-xs py-1.5 px-3 h-auto whitespace-nowrap shrink-0"
                     onClick={handleSaveXHandle}
                     disabled={syncCooldown > 0}
                   >
@@ -332,7 +332,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                     in
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <b className="text-[14px]">LinkedIn Integration</b>
                       {isLinkedInConnected ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -350,7 +350,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   {isLinkedInConnected ? (
                     <button
                       type="button"
