@@ -28,6 +28,7 @@ import {
   RiFileCopyLine,
 } from '@remixicon/react';
 import { deleteContentItem, updateContentItem } from '../services/activityService';
+import { BoardUIFilterPanel, FilterGroupData } from '../components/BoardUIFilterPanel';
 
 interface ContentPageProps {
   plat: string;
@@ -70,6 +71,90 @@ export const ContentPage: React.FC<ContentPageProps> = ({
   const { isDateInCurrentRange, rangeLabel, dateSlice } = useDateRangeStore();
   const [refreshTick, setRefreshTick] = useState(0);
 
+  // BoardUI Filter Panel State
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const filterWrapperRef = useRef<HTMLDivElement>(null);
+
+  const [filterGroups, setFilterGroups] = useState<FilterGroupData[]>([
+    {
+      k: 'platform',
+      label: 'Platform',
+      defaultOpen: true,
+      opts: ['X (Twitter)', 'LinkedIn'],
+      sel: [],
+    },
+    {
+      k: 'type',
+      label: 'Content type',
+      defaultOpen: true,
+      opts: ['Original post', 'Reply external', 'Reply own conversation'],
+      sel: [],
+    },
+    {
+      k: 'topic',
+      label: 'Topic',
+      defaultOpen: false,
+      opts: [...TOPICS],
+      sel: [],
+    },
+    {
+      k: 'engagement',
+      label: 'Engagement',
+      defaultOpen: false,
+      opts: ['High engagement (>5%)', 'Has views (>0)', 'Zero views (0)'],
+      sel: [],
+    },
+    {
+      k: 'timeOfDay',
+      label: 'Time of post',
+      defaultOpen: false,
+      opts: ['Morning (6 AM - 12 PM)', 'Afternoon (12 PM - 6 PM)', 'Evening & Night (6 PM - 12 AM)'],
+      sel: [],
+    },
+  ]);
+
+  const totalActiveFilters = useMemo(() => {
+    return filterGroups.reduce((acc, g) => acc + g.sel.length, 0);
+  }, [filterGroups]);
+
+  const handleToggleOption = (groupKey: string, option: string) => {
+    setFilterGroups((prev) =>
+      prev.map((g) => {
+        if (g.k !== groupKey) return g;
+        const isSelected = g.sel.includes(option);
+        return {
+          ...g,
+          sel: isSelected ? g.sel.filter((o) => o !== option) : [...g.sel, option],
+        };
+      })
+    );
+  };
+
+  const handleClearAllFilters = () => {
+    setFilterGroups((prev) => prev.map((g) => ({ ...g, sel: [] })));
+    setCq('');
+    setCt('all');
+  };
+
+  // Close filter popover on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        filterWrapperRef.current &&
+        !filterWrapperRef.current.contains(e.target as Node)
+      ) {
+        setIsFilterPanelOpen(false);
+      }
+    };
+
+    if (isFilterPanelOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isFilterPanelOpen]);
+
   const isLoaded = useLoadingState([plat, ct, cs, rangeLabel, refreshTick]);
 
   // Filter content items by current date range
@@ -78,12 +163,68 @@ export const ContentPage: React.FC<ContentPageProps> = ({
   }, [isDateInCurrentRange, dateSlice, refreshTick]);
 
   const L = useMemo(() => {
-    const filtered = inRangeCT.filter(
-      (c) =>
-        (plat === 'all' || c.p === plat) &&
-        (ct === 'all' || c.type === ct) &&
-        (c.text + c.topic).toLowerCase().includes(cq.toLowerCase())
-    );
+    const platSel = filterGroups.find((g) => g.k === 'platform')?.sel || [];
+    const typeSel = filterGroups.find((g) => g.k === 'type')?.sel || [];
+    const topicSel = filterGroups.find((g) => g.k === 'topic')?.sel || [];
+    const engSel = filterGroups.find((g) => g.k === 'engagement')?.sel || [];
+    const timeSel = filterGroups.find((g) => g.k === 'timeOfDay')?.sel || [];
+
+    const filtered = inRangeCT.filter((c) => {
+      // 1. Platform filter
+      if (platSel.length > 0) {
+        const matchesPlat =
+          (platSel.includes('X (Twitter)') && c.p === 'x') ||
+          (platSel.includes('LinkedIn') && c.p === 'li');
+        if (!matchesPlat) return false;
+      } else if (plat !== 'all' && c.p !== plat) {
+        return false;
+      }
+
+      // 2. Content Type filter
+      if (typeSel.length > 0) {
+        const matchesType = typeSel.some((t) =>
+          c.type.toLowerCase().includes(t.toLowerCase())
+        );
+        if (!matchesType) return false;
+      } else if (ct !== 'all' && c.type !== ct) {
+        return false;
+      }
+
+      // 3. Topic filter
+      if (topicSel.length > 0) {
+        if (!topicSel.includes(c.topic)) return false;
+      }
+
+      // 4. Engagement filter
+      if (engSel.length > 0) {
+        const matchesEng = engSel.some((e) => {
+          if (e.includes('>5%')) return c.eng > 5;
+          if (e.includes('>0')) return c.views > 0;
+          if (e.includes('Zero')) return c.views === 0;
+          return true;
+        });
+        if (!matchesEng) return false;
+      }
+
+      // 5. Time of Day filter
+      if (timeSel.length > 0 && c.date && !isNaN(c.date.getTime())) {
+        const h = c.date.getHours();
+        const matchesTime = timeSel.some((t) => {
+          if (t.includes('Morning')) return h >= 6 && h < 12;
+          if (t.includes('Afternoon')) return h >= 12 && h < 18;
+          if (t.includes('Evening')) return h >= 18 || h < 6;
+          return true;
+        });
+        if (!matchesTime) return false;
+      }
+
+      // 6. Search keyword
+      if (cq && !(c.text + ' ' + c.topic).toLowerCase().includes(cq.toLowerCase())) {
+        return false;
+      }
+
+      return true;
+    });
 
     filtered.sort((a, b) =>
       cs === 'views'
@@ -94,7 +235,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
     );
 
     return filtered;
-  }, [inRangeCT, plat, ct, cq, cs, refreshTick]);
+  }, [inRangeCT, plat, ct, cq, cs, filterGroups, refreshTick]);
 
   // Selected item resets if it falls outside current range
   useEffect(() => {
@@ -299,6 +440,45 @@ export const ContentPage: React.FC<ContentPageProps> = ({
             fixedWidth="w-[170px]"
             aria-label="Sort content by"
           />
+
+          {/* BoardUI Filter Button & Popover */}
+          <div className="relative" ref={filterWrapperRef}>
+            <button
+              type="button"
+              id="bui-filter-toggle"
+              className={`flex items-center gap-2 h-[40px] px-3.5 rounded-xl border text-[13px] font-medium transition-all cursor-pointer ${
+                isFilterPanelOpen || totalActiveFilters > 0
+                  ? 'bg-[#111111] text-white border-[#111111] shadow-xs'
+                  : 'bg-white text-[#2b2b2f] border-[var(--line)] hover:bg-[#faf9f6] shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+              }`}
+              onClick={() => setIsFilterPanelOpen((prev) => !prev)}
+              aria-expanded={isFilterPanelOpen}
+            >
+              <svg
+                className="w-3.5 h-3.5 stroke-current fill-none stroke-[2]"
+                viewBox="0 0 24 24"
+              >
+                <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>Filters</span>
+              {totalActiveFilters > 0 && (
+                <span className="min-w-[19px] h-[19px] px-1 rounded-full bg-[#f26a1b] text-white text-[11px] font-bold flex items-center justify-center">
+                  {totalActiveFilters}
+                </span>
+              )}
+            </button>
+
+            {isFilterPanelOpen && (
+              <div className="absolute right-0 top-full mt-2.5 z-[100] w-[380px] max-w-[calc(100vw-32px)] animate-in fade-in zoom-in-95 duration-150">
+                <BoardUIFilterPanel
+                  groups={filterGroups}
+                  onToggleOption={handleToggleOption}
+                  onClearAll={handleClearAllFilters}
+                  onClose={() => setIsFilterPanelOpen(false)}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{ marginTop: '14px' }}>
@@ -321,9 +501,24 @@ export const ContentPage: React.FC<ContentPageProps> = ({
           </TagGroup>
         </div>
 
-        {(plat !== 'all' || ct !== 'all' || cq) && (
+        {(plat !== 'all' || ct !== 'all' || cq || totalActiveFilters > 0) && (
           <div className="flex items-center gap-2 flex-wrap mt-3 pt-2 border-t border-[var(--line)]">
             <span className="text-xs text-neutral-400 font-medium">Active filters:</span>
+            {filterGroups.flatMap((g) =>
+              g.sel.map((opt) => (
+                <Chip key={`${g.k}-${opt}`} color="gray" className="gap-1 pr-1 bg-[#f4f4f4] border border-[#e5e5e5] text-[#2b2b2f]">
+                  <span>{g.label}: {opt}</span>
+                  <button
+                    type="button"
+                    className="hover:opacity-75 cursor-pointer ml-1 inline-flex items-center text-[#555]"
+                    onClick={() => handleToggleOption(g.k, opt)}
+                    aria-label={`Remove ${opt} filter`}
+                  >
+                    <RiCloseLine className="size-3.5" />
+                  </button>
+                </Chip>
+              ))
+            )}
             {plat !== 'all' && (
               <Chip color="orange" className="gap-1 pr-1">
                 <span>Platform: {plat === 'x' ? 'X' : 'LinkedIn'}</span>

@@ -87,3 +87,295 @@
 .preset-row:active {
   background-color: #e2e8f0;
 }
+
+/* ==========================================================================
+   BoardUI Filters Panel (06 Filters from reference)
+   ========================================================================== */
+.bui-filter-panel {
+  --bui-page: #ffffff;
+  --bui-ink: #111111;
+  --bui-text: #2b2b2f;
+  --bui-muted: #8a8a93;
+  --bui-card: #fcfcfc;
+  --bui-ring: #f4f4f4;
+  --bui-soft: #f1f1f1;
+  --bui-line: #ececf1;
+  --bui-sh: 17, 17, 17;
+
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  padding: 6px;
+  background: var(--bui-ring);
+  border-radius: 24px;
+  box-shadow: 0 1px 1px rgba(var(--bui-sh), .03), 0 12px 28px -10px rgba(var(--bui-sh), .12), 0 34px 64px -28px rgba(var(--bui-sh), .18);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--bui-text);
+  box-sizing: border-box;
+}
+
+.bui-filter-sheet {
+  background: var(--bui-card);
+  border-radius: 19px;
+  padding: 14px 12px 10px;
+  box-shadow: 0 0 0 1px rgba(var(--bui-sh), .04);
+  max-height: min(580px, calc(100vh - 200px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.bui-filter-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px 0;
+}
+
+.bui-filter-top strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--bui-ink);
+}
+
+.bui-filter-clear {
+  border: 0;
+  background: none;
+  padding: 4px 6px;
+  color: var(--bui-muted);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color .15s, opacity .2s;
+}
+
+.bui-filter-clear:hover {
+  color: var(--bui-ink);
+}
+
+.bui-filter-clear[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+.bui-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 6px 12px;
+  min-height: 58px;
+  align-items: flex-start;
+}
+
+.bui-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 11px;
+  background: var(--bui-soft);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--bui-text);
+  animation: bui-filter-in .28s cubic-bezier(.32, .72, 0, 1);
+}
+
+.bui-filter-chip button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  background: none;
+  color: #555;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  transition: background .15s, color .15s;
+}
+
+.bui-filter-chip button:hover {
+  background: rgba(var(--bui-sh), .08);
+  color: var(--bui-ink);
+}
+
+.bui-filter-chip svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.2;
+}
+
+.bui-filter-empty {
+  padding: 8px 4px;
+  color: var(--bui-muted);
+  font-size: 13px;
+}
+
+@keyframes bui-filter-in {
+  from {
+    opacity: 0;
+    transform: scale(.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bui-filter-gh {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  padding: 9px 6px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 10px;
+  text-align: left;
+  transition: background .15s;
+}
+
+.bui-filter-gh:hover {
+  background: rgba(var(--bui-sh), .03);
+}
+
+.bui-filter-gh .chev {
+  color: var(--bui-muted);
+  transition: transform .25s cubic-bezier(.32, .72, 0, 1);
+  width: 14px;
+  height: 14px;
+  flex: none;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bui-filter-group:not(.open) .chev {
+  transform: rotate(-90deg);
+}
+
+.bui-filter-gh b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--bui-ink);
+}
+
+.bui-filter-gh .n {
+  color: var(--bui-muted);
+  font-size: 13px;
+}
+
+.bui-filter-gh .f {
+  margin-left: auto;
+  color: var(--bui-muted);
+  font-size: 12.5px;
+}
+
+.bui-filter-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .3s cubic-bezier(.32, .72, 0, 1);
+}
+
+.bui-filter-group.open .bui-filter-body {
+  grid-template-rows: 1fr;
+}
+
+.bui-filter-inner {
+  overflow: hidden;
+}
+
+.bui-filter-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 6px 7px 8px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 10px;
+  text-align: left;
+  color: var(--bui-text);
+  font-size: 14px;
+  transition: background .15s;
+}
+
+.bui-filter-opt:hover {
+  background: rgba(var(--bui-sh), .03);
+}
+
+.bui-filter-box {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--bui-soft);
+  color: #fff;
+  transition: background .15s, transform .15s;
+  flex-shrink: 0;
+}
+
+.bui-filter-box svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
+  opacity: 0;
+  transform: scale(.6);
+  transition: opacity .15s, transform .2s cubic-bezier(.32, .72, 0, 1);
+  stroke: currentColor;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bui-filter-opt[aria-checked="true"] .bui-filter-box {
+  background: var(--bui-ink);
+}
+
+.bui-filter-opt[aria-checked="true"] .bui-filter-box svg {
+  opacity: 1;
+  transform: none;
+}
+
+.bui-filter-opt:active .bui-filter-box {
+  transform: scale(.9);
+}
+
+.bui-filter-group + .bui-filter-group {
+  border-top: 1px solid transparent;
+}
+
+.bui-filter-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 6px 6px;
+  color: var(--bui-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.bui-filter-foot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.bui-filter-foot kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(var(--bui-sh), .06), 0 1px 1px rgba(var(--bui-sh), .06);
+  font: inherit;
+  font-size: 12px;
+  color: #555;
+}
+
