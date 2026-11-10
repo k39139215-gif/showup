@@ -47,16 +47,16 @@ main{min-width:0;height:100dvh;display:flex;flex-direction:column;background:var
 .tools .seg{height:40px;border-radius:10px;padding:3px;box-sizing:border-box;display:inline-flex;align-items:stretch}
 .tools .seg button{height:100%;border-radius:7px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-size:13px;font-weight:500}
 .wrap{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:28px;box-sizing:border-box;scrollbar-gutter:stable;background:var(--app-bg)}
-.wrap-inner{max-width:1480px;margin:0 auto;width:100%}
+.wrap-inner{max-width:1240px;margin:0 auto;width:100%}
 .wrap{scrollbar-width:thin;scrollbar-color:transparent transparent}
 .wrap:hover{scrollbar-color:#cbc8bf transparent}
 .wrap::-webkit-scrollbar{width:8px;height:8px}
 .wrap::-webkit-scrollbar-track{background:transparent}
 .wrap::-webkit-scrollbar-thumb{background-color:transparent;border-radius:9999px;transition:background-color 0.2s}
 .wrap:hover::-webkit-scrollbar-thumb{background-color:#cbc8bf}
-.head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:22px}
-.head h1, .legacy-ui h1{font-size:28px;font-weight:600;letter-spacing:-.03em}
-.sub{color:var(--mute);margin-top:4px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px;user-select:none;-webkit-user-select:none;cursor:default}
+.head h1, .legacy-ui h1{font-size:25px;font-weight:600;letter-spacing:-.025em;line-height:1.25;user-select:none;-webkit-user-select:none;cursor:default}
+.sub{color:var(--mute);margin-top:4px;font-size:13.5px;user-select:none;-webkit-user-select:none;cursor:default}
 .g{display:grid;gap:14px}.mb{margin-bottom:14px}
 .k4{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:1.6fr 1fr}.k3{grid-template-columns:repeat(3,1fr)}
 .cm{grid-template-columns:1fr 380px;align-items:start}
@@ -177,4 +177,97 @@ body.is-login .login{display:grid}
 #view, #view:focus, #view:focus-visible {
   outline: none !important;
   box-shadow: none !important;
+}
+
+
+/* ==========================================================================
+   100% Zoom Default Polish & UI Caret / Cursor Fixes
+   ========================================================================== */
+
+/* Prevent accidental text cursor / caret on UI headings & dashboard chrome */
+h1, h2, h3, h4, h5, h6,
+.head,
+.head *,
+.sub,
+.crumb,
+.crumb *,
+.top,
+.top *,
+.tray .th,
+.tray .th *,
+.brand,
+.brand *,
+aside.desktop-sidebar,
+aside.desktop-sidebar *,
+aside.drawer-aside,
+aside.drawer-aside *,
+.cnt,
+.gl,
+.user,
+.user *,
+.pill,
+.chip,
+.tag,
+.badge,
+.num,
+.ks,
+.kv,
+.legend,
+.legend *,
+.seg,
+.seg *,
+.tools,
+.cit .t,
+.cit .t *,
+.pg small,
+.empty,
+.bui-filter-panel,
+.bui-filter-panel * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Explicit default cursor on non-interactive UI elements so I-beam never shows */
+h1, h2, h3, h4, h5, h6,
+.head,
+.sub,
+.crumb,
+.tray .th,
+.brand,
+.gl,
+.user,
+.num,
+.ks,
+.kv,
+.empty {
+  cursor: default !important;
+}
+
+/* Allow text selection and I-beam cursor ONLY in real inputs and readable text */
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  cursor: text !important;
+}
+
+.cit p,
+.cbody,
+.exp p {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: default;
+}
+
+/* Interactive elements retain pointer */
+button,
+a,
+[role="button"],
+[role="checkbox"],
+[role="menuitem"],
+.cit,
+.btn,
+.seg button {
+  cursor: pointer;
 }
