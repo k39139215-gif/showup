@@ -1,14 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
-
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xsexkrxlyirnnroxenjl.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_Na9A_qM6aFzYgPYsaQktmQ_D6O-C-e7';
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL || 'k39139215@gmail.com';
 
 async function getWeeklyStats() {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  
-  // Last 7 days in Asia/Kolkata
   const today = new Date();
   const past7Days = new Date();
   past7Days.setDate(today.getDate() - 7);
@@ -20,21 +15,25 @@ async function getWeeklyStats() {
   let totalViews = 0;
 
   try {
-    const { data } = await supabase
-      .from('activity_daily')
-      .select('*')
-      .gte('date', startStr)
-      .lte('date', endStr);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/activity_daily?date=gte.${startStr}&date=lte.${endStr}`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
 
-    if (data && data.length > 0) {
-      data.forEach(row => {
-        postsCount += (row.posts || 0);
-        repliesCount += (row.replies || 0);
-        totalViews += (row.views || 0);
-      });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        data.forEach((row) => {
+          postsCount += row.posts || 0;
+          repliesCount += row.replies || 0;
+          totalViews += row.views || 0;
+        });
+      }
     }
   } catch (e) {
-    console.warn('Could not fetch from Supabase, using defaults:', e);
+    console.warn('Could not fetch daily stats from Supabase REST, continuing with default counts:', e.message);
   }
 
   return { postsCount, repliesCount, totalViews, startStr, endStr };
@@ -120,7 +119,6 @@ async function main() {
 
   if (!RESEND_API_KEY) {
     console.error('ERROR: RESEND_API_KEY environment variable is missing.');
-    console.log('To send real emails automatically, add RESEND_API_KEY in your GitHub Repository Secrets.');
     process.exit(1);
   }
 
@@ -150,7 +148,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal error running weekly digest:', err);
   process.exit(1);
 });
