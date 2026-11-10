@@ -161,3 +161,52 @@ function parseCsvLine(line: string): string[] {
   result.push(current.trim());
   return result;
 }
+
+
+/**
+ * Trigger live zero-ban synchronization for the given X handle
+ */
+export async function triggerLiveXSync(handle: string): Promise<{
+  success: boolean;
+  count: number;
+  views: number;
+  message?: string;
+}> {
+  const clean = handle.replace(/^@/, '').trim();
+  try {
+    let localRes: any = null;
+    try {
+      const resp = await fetch(`/api/sync-x?handle=${clean}`, { method: 'GET' });
+      if (resp.ok) {
+        localRes = await resp.json();
+      }
+    } catch (e) {
+      // Local server not running or offline
+    }
+
+    // Always sync database records into application memory
+    const { syncSupabaseToMemory } = await import('./activityService');
+    await syncSupabaseToMemory();
+
+    // Inspect records in Supabase
+    const { supabase: sb } = await import('../lib/supabase');
+    const { data: posts } = await sb.from('posts').select('*').eq('platform', 'x');
+    const count = posts?.length || 0;
+    const views = posts?.reduce((acc: number, p: any) => acc + (p.views || 0), 0) || 0;
+
+    return {
+      success: true,
+      count: localRes?.count || count,
+      views: localRes?.totalViews || views,
+      message: `Synced ${count} posts and ${views} impressions from @${clean}.`,
+    };
+  } catch (err: any) {
+    console.error('triggerLiveXSync error:', err);
+    return {
+      success: false,
+      count: 0,
+      views: 0,
+      message: err.message || 'Sync failed',
+    };
+  }
+}

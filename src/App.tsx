@@ -1,6 +1,7 @@
 import { checkAndTriggerRealtimeStreakAlert } from './services/notificationService';
 import { ShowUpLogo } from './components/ShowUpLogo';
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { CalendarDate } from '@internationalized/date';
 import { D, N, CT, dayAt, streak, TOPICS, getTodayCalendar } from './data';
 import { Icon } from './utils';
@@ -595,7 +596,7 @@ const AppContent: React.FC = () => {
             <b style={{ fontWeight: 500 }} className="truncate block">
               {currentUser?.user_metadata?.full_name ||
                 currentUser?.user_metadata?.name ||
-                (currentUser?.email ? currentUser.email.split('@')[0] : 'Kartik Bhosale')}
+                (currentUser?.email ? currentUser.email.split('@')[0] : (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_profile_name')) || 'Kartik Bhosale')}
             </b>
             <small className="truncate block text-[11px] text-[#6b7280]">
               {currentUser?.email || '@kartikBhosaleHQ'}
@@ -626,7 +627,7 @@ const AppContent: React.FC = () => {
       <div className="shell">
         {renderSidebar(false)}
 
-        {isSidebarOpen && (
+        {isSidebarOpen && typeof document !== 'undefined' && createPortal(
           <div className="drawer-root">
             <div
               className="drawer-backdrop"
@@ -634,7 +635,8 @@ const AppContent: React.FC = () => {
               aria-hidden="true"
             />
             {renderSidebar(true)}
-          </div>
+          </div>,
+          document.body
         )}
 
         <main>

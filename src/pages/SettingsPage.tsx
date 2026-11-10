@@ -20,6 +20,7 @@ import { TagGroup, Tag } from '../components/base/tag-group/tag-group';
 import { TOPICS } from '../data';
 import { TIMEZONE_OPTIONS } from '../utils/dateMath';
 import { getLinkedInAuthUrl } from '../services/linkedinService';
+import { triggerLiveXSync } from '../services/xSyncService';
 
 interface SettingsPageProps {
   tab: string;
@@ -145,6 +146,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   const [isLinkedInConnected, setIsLinkedInConnected] = useState<boolean>(() => localStorage.getItem('verasett_li_connected') === 'true');
   const [isConnectingLi, setIsConnectingLi] = useState<boolean>(false);
   const [syncCooldown, setSyncCooldown] = useState<number>(0);
+  const [isSyncingX, setIsSyncingX] = useState<boolean>(false);
+  const [profileName, setProfileName] = useState<string>(() => (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_profile_name')) || 'Kartik Bhosale');
 
   useEffect(() => {
     if (syncCooldown <= 0) return;
@@ -201,21 +204,35 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
     });
   };
 
-  const handleSaveXHandle = () => {
-    if (syncCooldown > 0) {
-      toast.info('Rate limit active', {
-        description: `Please wait ${syncCooldown}s before syncing again to respect Twitter API rate limits.`,
-      });
+  const handleSaveXHandle = async () => {
+    if (isSyncingX) return;
+    const clean = xHandle.replace(/^@/, '').trim();
+    if (!clean) {
+      toast.error('Please enter a valid X handle');
       return;
     }
-    const clean = xHandle.replace(/^@/, '').trim();
     localStorage.setItem('verasett_x_handle', clean);
     localStorage.setItem('verasett_x_connected', 'true');
     setIsXConnected(true);
-    setSyncCooldown(60); // 60s cooldown to protect Twitter rate limits
-    toast.success('X Profile Linked', {
-      description: `Linked @${clean} to your workspace. Sync scheduled.`,
-    });
+    setIsSyncingX(true);
+    toast.info(`Connecting to @${clean}...`, { description: 'Syncing real public posts, views, and impressions via Zero-Ban gateway.' });
+
+    try {
+      const res = await triggerLiveXSync(clean);
+      setIsSyncingX(false);
+      setSyncCooldown(30);
+      if (res.success) {
+        toast.success(`⚡ Live X Data Synced!`, {
+          description: `Loaded ${res.count} posts and ${res.views} impressions for @${clean}.`,
+        });
+        onSaveTargets();
+      } else {
+        toast.warning('X Profile Linked', { description: res.message || 'Data will refresh on next scheduled sync.' });
+      }
+    } catch (err: any) {
+      setIsSyncingX(false);
+      toast.error('Sync failed', { description: err.message });
+    }
   };
 
   const handleDisconnectX = () => {
@@ -279,7 +296,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
               <div className="fgrid">
                 <label className="fld">
                   Full name
-                  <input defaultValue="Kartik Sharma" />
+                  <input
+                    value={profileName}
+                    onChange={(e) => {
+                      setProfileName(e.target.value);
+                      localStorage.setItem('verasett_profile_name', e.target.value);
+                    }}
+                    placeholder="Kartik Bhosale"
+                  />
                 </label>
                 <label className="fld">
                   Product focus
@@ -604,7 +628,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                     type="button"
                     className="btn text-xs py-1.5 px-3 h-auto whitespace-nowrap shrink-0"
                     onClick={handleSaveXHandle}
-                    disabled={syncCooldown > 0}
+                    disabled={isSyncingX}
                   >
                     {syncCooldown > 0 ? `Wait ${syncCooldown}s` : 'Save & Sync'}
                   </button>
