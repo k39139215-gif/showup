@@ -624,28 +624,16 @@ const AppContent: React.FC = () => {
       <div className="shell">
         {renderSidebar(false)}
 
-        <Drawer
-          isOpen={isSidebarOpen}
-          onOpenChange={setIsSidebarOpen}
-          placement="start"
-          isDismissable
-          aria-label="Navigation drawer"
-          className="p-0 border-none shadow-none bg-transparent w-[260px] h-full"
-          overlayClassName="z-[110]"
-        >
-          {() =>
-            isSidebarOpen ? (
-              <div className="relative h-full">
-                <div
-                  className="drawer-backdrop fixed inset-0 bg-black/40"
-                  onClick={() => setIsSidebarOpen(false)}
-                  aria-hidden="true"
-                />
-                {renderSidebar(true)}
-              </div>
-            ) : null
-          }
-        </Drawer>
+        {isSidebarOpen && (
+          <div className="drawer-root">
+            <div
+              className="drawer-backdrop"
+              onClick={() => setIsSidebarOpen(false)}
+              aria-hidden="true"
+            />
+            {renderSidebar(true)}
+          </div>
+        )}
 
         <main>
           <div className="top">
