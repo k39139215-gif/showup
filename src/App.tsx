@@ -1,3 +1,4 @@
+import { ShowUpLogo } from './components/ShowUpLogo';
 import React, { useState, useEffect, useRef } from 'react';
 import { CalendarDate } from '@internationalized/date';
 import { D, N, CT, dayAt, streak, TOPICS, getTodayCalendar } from './data';
@@ -464,7 +465,7 @@ const AppContent: React.FC = () => {
     <aside className={isDrawer ? 'drawer-aside' : 'desktop-sidebar'}>
       <div className="brand" style={{ justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div className="logo">S</div>
+          <ShowUpLogo size={32} />
           <div>
             <b>ShowUp</b>
             <small>Social Activity</small>

@@ -1,3 +1,4 @@
+import { ShowUpLogo } from '../components/ShowUpLogo';
 import React, { useState } from 'react';
 import { LG_DOTS, streak } from '../data';
 import { SocialButton } from '../components/base/social-button/social-button';
@@ -103,7 +104,7 @@ export const LoginPage: React.FC = () => {
     <section className="login" id="login">
       <div className="lf">
         <div className="brand">
-          <div className="logo">S</div>
+          <ShowUpLogo size={36} />
           <div>
             <b>ShowUp</b>
             <small>Social Radar</small>

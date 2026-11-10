@@ -415,7 +415,7 @@ export const ContentPage: React.FC<ContentPageProps> = ({
           <SearchField
             inputId="cq"
             aria-label="Search content keywords"
-            placeholder="Search keywords (NetSuite, lockbox, unapplied cash)…"
+            placeholder="Search posts, replies, keywords, or topics…"
             value={cq}
             onChange={setCq}
             shape="rounded"

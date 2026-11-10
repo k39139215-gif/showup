@@ -50,25 +50,25 @@ export const ReviewPage: React.FC = () => {
 
   const ex = [
     [
-      'NetSuite',
+      'Personal Brand',
       'Original post',
-      'NetSuite Unapplied Cash Teardown Thread',
-      'Breakdown of NetSuite remittance parsing errors will outperform generic AR posts by more than 25% in impressions.',
-      'Technical ERP pain posts attract mid-market controllers searching for active automation answers.',
+      'Technical Build-in-Public Architecture Thread',
+      'Sharing concrete technical decisions and architecture breakdowns generates 3x more bookmarks and profile clicks.',
+      'Developers and founders look for actionable implementation patterns, making technical depth a high-conversion follower trigger.',
     ],
     [
-      'Cash Application',
+      'Audience Engagement',
       'Reply external',
-      'CFO Remittance Friction Reply Playbook',
-      'Leaving 3 substantive replies on enterprise finance leaders’ posts daily generates at least 2 inbound profile visits a week.',
-      'Actionable benchmarks on lockbox match rates position Verasett as an authority without pitching.',
+      'High-Signal Niche Leader Comment Playbook',
+      'Leaving 3 substantive, value-first replies on industry leaders’ posts daily drives steady inbound profile visits.',
+      'Thoughtful contributions to trending industry discussions position your voice as an authority naturally.',
     ],
     [
-      'SAP',
+      'Consistency & Growth',
       'Original post',
-      'SAP S/4HANA Migration Cash Application Gap Post',
-      'Addressing post-migration unapplied cash backlogs drives a high share and repost rate.',
-      'S/4HANA transitions frequently break custom lockbox scripts, making it a timely conversation trigger.',
+      'Weekly Progress & Wins Breakdown',
+      'Transparent weekly progress retrospectives drive high engagement and organic retweets from peer creators.',
+      'Consistent progress updates establish momentum and signal reliable long-term execution.',
     ],
   ];
 
@@ -79,7 +79,7 @@ export const ReviewPage: React.FC = () => {
           <h1>Weekly executive review</h1>
           <p className="sub">Evidence-grounded observations and growth experiments</p>
         </div>
-        <span className="chip mono">{`${rangeLabel} · N=${tweenPosts} posts, N=${tweenReps} replies`}</span>
+        <span className="chip font-medium text-[12.5px] text-[var(--ink-2)] bg-white border border-[var(--line)] shadow-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg"><span>{rangeLabel}</span><span className="text-[var(--mute)]">·</span><span className="font-semibold text-[var(--ink)]">{tweenPosts} {tweenPosts === 1 ? 'post' : 'posts'}</span><span className="text-[var(--mute)]">·</span><span className="font-semibold text-[var(--ink)]">{tweenReps} {tweenReps === 1 ? 'reply' : 'replies'}</span></span>
       </div>
 
       {!hasData ? (
