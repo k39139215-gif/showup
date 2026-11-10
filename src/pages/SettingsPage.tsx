@@ -1,3 +1,12 @@
+import {
+  getNotificationSettings,
+  saveNotificationSettings,
+  requestDesktopNotificationPermission,
+  sendDesktopNotification,
+  dispatchEmail,
+  getEmailLogs,
+  EmailDispatchLog,
+} from '../services/notificationService';
 import React, { useState, useEffect } from 'react';
 import { G, Goals } from '../data';
 import { badge, Tray } from '../utils';
@@ -28,8 +37,106 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   const [formG, setFormG] = useState<Goals>({ ...G });
   const [saveMsg, setSaveMsg] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kolkata');
-  const [emailDigest, setEmailDigest] = useState(true);
-  const [streakAlerts, setStreakAlerts] = useState(true);
+  const [notifSettings, setNotifSettings] = useState(() => getNotificationSettings());
+  const [recipientEmail, setRecipientEmail] = useState(() => notifSettings.recipientEmail || 'k39139215@gmail.com');
+  const [desktopPermission, setDesktopPermission] = useState<NotificationPermission>(() =>
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
+  );
+  const [isSendingEmail, setIsSendingEmail] = useState<boolean>(false);
+  const [emailLogs, setEmailLogs] = useState<EmailDispatchLog[]>(() => getEmailLogs());
+  const [selectedPreviewLog, setSelectedPreviewLog] = useState<EmailDispatchLog | null>(null);
+  const [showAdvancedEmail, setShowAdvancedEmail] = useState<boolean>(false);
+  const [resendApiKey, setResendApiKey] = useState(() => notifSettings.resendApiKey || '');
+  const [webhookUrl, setWebhookUrl] = useState(() => notifSettings.webhookUrl || '');
+
+  const handleSaveEmail = () => {
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    const updated = saveNotificationSettings({ recipientEmail });
+    setNotifSettings(updated);
+    toast.success('Alert recipient email saved', { description: recipientEmail });
+  };
+
+  const handleToggleDigest = (val: boolean) => {
+    const updated = saveNotificationSettings({ emailDigest: val });
+    setNotifSettings(updated);
+  };
+
+  const handleToggleStreakAlerts = (val: boolean) => {
+    const updated = saveNotificationSettings({ streakAlerts: val });
+    setNotifSettings(updated);
+    if (val && desktopPermission !== 'granted') {
+      handleRequestDesktop();
+    }
+  };
+
+  const handleToggleDesktop = (val: boolean) => {
+    const updated = saveNotificationSettings({ desktopAlerts: val });
+    setNotifSettings(updated);
+    if (val && desktopPermission !== 'granted') {
+      handleRequestDesktop();
+    }
+  };
+
+  const handleRequestDesktop = async () => {
+    const perm = await requestDesktopNotificationPermission();
+    setDesktopPermission(perm);
+    if (perm === 'granted') {
+      sendDesktopNotification('🔥 ShowUp Streak Alerts Enabled', 'You will receive real-time notifications for your daily goals.');
+      toast.success('Desktop notifications enabled!');
+    } else {
+      toast.error('Desktop notifications permission denied in browser.');
+    }
+  };
+
+  const handleSendTestStreakAlert = async () => {
+    setIsSendingEmail(true);
+    toast.info('Sending streak alert email...', { description: `Target: ${recipientEmail}` });
+    try {
+      const res = await dispatchEmail('streak_alert', recipientEmail);
+      setIsSendingEmail(false);
+      setEmailLogs(getEmailLogs());
+      if (res.success) {
+        toast.success('🔥 Streak alert email sent!', { description: res.message });
+        if (notifSettings.desktopAlerts) {
+          sendDesktopNotification('🔥 ShowUp Streak Alert', `Streak alert email successfully sent to ${recipientEmail}`);
+        }
+        setSelectedPreviewLog(res.log);
+      } else {
+        toast.error('Failed to send email', { description: res.message });
+      }
+    } catch (e: any) {
+      setIsSendingEmail(false);
+      toast.error('Error sending alert email', { description: e.message });
+    }
+  };
+
+  const handleSendTestWeeklyDigest = async () => {
+    setIsSendingEmail(true);
+    toast.info('Sending weekly digest email...', { description: `Target: ${recipientEmail}` });
+    try {
+      const res = await dispatchEmail('weekly_digest', recipientEmail);
+      setIsSendingEmail(false);
+      setEmailLogs(getEmailLogs());
+      if (res.success) {
+        toast.success('📊 Weekly digest email sent!', { description: res.message });
+        setSelectedPreviewLog(res.log);
+      } else {
+        toast.error('Failed to send digest', { description: res.message });
+      }
+    } catch (e: any) {
+      setIsSendingEmail(false);
+      toast.error('Error sending digest email', { description: e.message });
+    }
+  };
+
+  const handleSaveAdvanced = () => {
+    const updated = saveNotificationSettings({ resendApiKey, webhookUrl });
+    setNotifSettings(updated);
+    toast.success('Custom email API & Webhook settings saved!');
+  };
   const [monitoredTopics, setMonitoredTopics] = useState<string[]>(() => [...TOPICS]);
 
   // Social account integration state
@@ -182,17 +289,218 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                   />
                 </label>
               </div>
-              <div className="mt-5 flex flex-col gap-3">
-                <b className="text-[13.5px] font-medium text-[var(--ink)]">Notification preferences</b>
-                <div className="flex flex-col gap-2.5">
-                  <Switch isSelected={emailDigest} onChange={setEmailDigest}>
-                    Weekly email digest summary
-                  </Switch>
-                  <Switch isSelected={streakAlerts} onChange={setStreakAlerts}>
-                    Real-time streak alerts (Asia/Kolkata boundary)
-                  </Switch>
+              <div className="mt-6 border border-[var(--line)] rounded-xl p-4 bg-[var(--app-bg)]/50">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🔔</span>
+                    <b className="text-[14px] font-semibold text-[var(--ink)]">Email Notifications & Real-Time Streak Alerts</b>
+                  </div>
+                  <span className="text-[11px] font-mono text-[var(--mute)] bg-[var(--shell)] px-2 py-0.5 rounded-full border border-[var(--line)]">
+                    Asia/Kolkata 24h
+                  </span>
+                </div>
+
+                <p className="text-[12.5px] text-[var(--ink-2)] mb-4 leading-relaxed">
+                  Real emails and desktop alerts keep you accountable to your daily posting and outbound reply quotas.
+                </p>
+
+                {/* Recipient Email Input */}
+                <div className="mb-4">
+                  <label className="text-[12px] font-medium text-[var(--ink-2)] block mb-1.5">
+                    Alert Recipient Email
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="email"
+                      value={recipientEmail}
+                      onChange={(e) => setRecipientEmail(e.target.value)}
+                      placeholder="your.email@example.com"
+                      className="flex-1 px-3 py-2 text-[13px] rounded-lg border border-[var(--line)] bg-[#fff] text-[var(--ink)] focus:outline-none focus:border-[#FF702E]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveEmail}
+                      className="px-3.5 py-2 text-[12.5px] font-medium rounded-lg bg-[var(--shell)] hover:bg-[#eae8e3] text-[var(--ink)] border border-[var(--line)] transition-all shrink-0 cursor-pointer"
+                    >
+                      Save Email
+                    </button>
+                  </div>
+                </div>
+
+                {/* Switches */}
+                <div className="flex flex-col gap-3 py-3 border-y border-[var(--line)]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[13px] font-medium text-[var(--ink)]">Real-time streak alerts</div>
+                      <div className="text-[11.5px] text-[var(--mute)]">Email & system alert when today's goal is met or at risk before midnight</div>
+                    </div>
+                    <Switch isSelected={notifSettings.streakAlerts} onChange={handleToggleStreakAlerts} aria-label="Real-time streak alerts" />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[13px] font-medium text-[var(--ink)]">Weekly email digest summary</div>
+                      <div className="text-[11.5px] text-[var(--mute)]">Weekly recap of posts, replies, and impressions delivered every Sunday</div>
+                    </div>
+                    <Switch isSelected={notifSettings.emailDigest} onChange={handleToggleDigest} aria-label="Weekly email digest summary" />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[13px] font-medium text-[var(--ink)]">Desktop OS notifications</div>
+                      <div className="text-[11.5px] text-[var(--mute)]">
+                        Status: <span className={desktopPermission === 'granted' ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'}>
+                          {desktopPermission === 'granted' ? 'Granted (Active)' : 'Not Enabled'}
+                        </span>
+                      </div>
+                    </div>
+                    {desktopPermission === 'granted' ? (
+                      <Switch isSelected={notifSettings.desktopAlerts} onChange={handleToggleDesktop} aria-label="Desktop notifications" />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleRequestDesktop}
+                        className="px-2.5 py-1 text-[11.5px] font-medium rounded-md bg-[#FF702E]/10 text-[#DE4205] border border-[#FF702E]/30 hover:bg-[#FF702E]/20 transition-all cursor-pointer"
+                      >
+                        Enable OS Alerts
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dispatch Trigger Actions */}
+                <div className="mt-4 flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    disabled={isSendingEmail}
+                    onClick={handleSendTestStreakAlert}
+                    className="px-3.5 py-2 text-[12.5px] font-semibold rounded-lg bg-gradient-to-r from-[#FF702E] to-[#DE4205] text-[#fff] shadow-[0_2px_6px_rgba(222,66,5,0.25)] hover:opacity-95 active:scale-98 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>🔥</span>
+                    <span>{isSendingEmail ? 'Sending Alert...' : 'Send Test Streak Email Now'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSendingEmail}
+                    onClick={handleSendTestWeeklyDigest}
+                    className="px-3 py-2 text-[12.5px] font-medium rounded-lg bg-[#fff] text-[var(--ink)] border border-[var(--line)] hover:bg-[var(--shell)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>📊</span>
+                    <span>Send Weekly Digest</span>
+                  </button>
+
+                  {emailLogs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPreviewLog(emailLogs[0])}
+                      className="px-3 py-2 text-[12px] font-medium rounded-lg text-[var(--mute)] hover:text-[var(--ink)] transition-all underline ml-auto cursor-pointer"
+                    >
+                      View Dispatch Log ({emailLogs.length})
+                    </button>
+                  )}
+                </div>
+
+                {/* Advanced Webhook / Custom API toggle */}
+                <div className="mt-3.5 pt-3 border-t border-[var(--line)]/60">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedEmail(!showAdvancedEmail)}
+                    className="text-[11.5px] text-[var(--mute)] hover:text-[var(--ink)] flex items-center gap-1 font-medium cursor-pointer"
+                  >
+                    <span>{showAdvancedEmail ? '▼' : '▶'}</span>
+                    <span>Custom Resend API / Webhook Settings (Optional)</span>
+                  </button>
+
+                  {showAdvancedEmail && (
+                    <div className="mt-2.5 p-3 rounded-lg bg-[#fff] border border-[var(--line)] flex flex-col gap-2.5">
+                      <div>
+                        <label className="text-[11px] font-medium text-[var(--mute)] block mb-1">
+                          Resend API Key (Optional)
+                        </label>
+                        <input
+                          type="password"
+                          value={resendApiKey}
+                          onChange={(e) => setResendApiKey(e.target.value)}
+                          placeholder="re_..."
+                          className="w-full px-2.5 py-1.5 text-[12px] rounded border border-[var(--line)] font-mono text-[var(--ink)]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-medium text-[var(--mute)] block mb-1">
+                          Webhook URL (Discord / Slack / Zapier / n8n)
+                        </label>
+                        <input
+                          type="url"
+                          value={webhookUrl}
+                          onChange={(e) => setWebhookUrl(e.target.value)}
+                          placeholder="https://..."
+                          className="w-full px-2.5 py-1.5 text-[12px] rounded border border-[var(--line)] font-mono text-[var(--ink)]"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSaveAdvanced}
+                        className="self-end px-3 py-1.5 text-[11.5px] font-medium rounded bg-[var(--ink)] text-[#fff] cursor-pointer"
+                      >
+                        Save API Settings
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Email Preview Modal */}
+              {selectedPreviewLog && (
+                <div className="fixed inset-0 z-[12000] flex items-center justify-center p-4">
+                  <div
+                    className="fixed inset-0 bg-black/45 backdrop-blur-[2px]"
+                    onClick={() => setSelectedPreviewLog(null)}
+                  />
+                  <div className="relative bg-[#fff] rounded-2xl border border-[var(--line)] shadow-[0_20px_50px_rgba(0,0,0,0.2)] max-w-[620px] w-full max-h-[90vh] flex flex-col overflow-hidden z-[12001] animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-5 py-4 border-b border-[var(--line)] flex items-center justify-between bg-[var(--app-bg)]">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">📧</span>
+                          <b className="text-[14px] text-[var(--ink)]">{selectedPreviewLog.subject}</b>
+                        </div>
+                        <div className="text-[11.5px] text-[var(--mute)] mt-0.5">
+                          To: <b>{selectedPreviewLog.recipient}</b> · {new Date(selectedPreviewLog.timestamp).toLocaleTimeString()} ({selectedPreviewLog.method})
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPreviewLog(null)}
+                        className="w-7 h-7 rounded-md hover:bg-[var(--line)] text-[var(--mute)] hover:text-[var(--ink)] grid place-items-center cursor-pointer text-sm font-semibold"
+                        aria-label="Close"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="p-4 flex-1 overflow-y-auto bg-[#faf9f6]">
+                      <div className="border border-[var(--line)] rounded-xl overflow-hidden bg-[#fff] shadow-sm">
+                        <iframe
+                          title="Email Preview"
+                          srcDoc={selectedPreviewLog.htmlContent}
+                          className="w-full h-[420px] border-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="px-5 py-3 border-t border-[var(--line)] bg-[var(--app-bg)] flex items-center justify-between">
+                      <span className="text-[11.5px] text-emerald-600 font-medium flex items-center gap-1">
+                        <span>✓</span> Dispatched & Delivered Successfully
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPreviewLog(null)}
+                        className="px-4 py-1.5 text-[12.5px] font-medium rounded-lg bg-[var(--ink)] text-[#fff] cursor-pointer"
+                      >
+                        Close Preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="mt-5">
                 <TagGroup
                   label="Monitored topics"

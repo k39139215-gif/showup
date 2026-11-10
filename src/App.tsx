@@ -1,3 +1,4 @@
+import { checkAndTriggerRealtimeStreakAlert } from './services/notificationService';
 import { ShowUpLogo } from './components/ShowUpLogo';
 import React, { useState, useEffect, useRef } from 'react';
 import { CalendarDate } from '@internationalized/date';
@@ -405,6 +406,7 @@ const AppContent: React.FC = () => {
       duration: 4000,
     });
     refreshData();
+    checkAndTriggerRealtimeStreakAlert(streak());
   };
 
   const handleImportXSuccess = (result: XImportResult) => {
