@@ -144,6 +144,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   const [xHandle, setXHandle] = useState<string>(() => localStorage.getItem('verasett_x_handle') || 'kartikBhosaleHQ');
   const [isXConnected, setIsXConnected] = useState<boolean>(() => localStorage.getItem('verasett_x_connected') !== 'false');
   const [isLinkedInConnected, setIsLinkedInConnected] = useState<boolean>(() => localStorage.getItem('verasett_li_connected') === 'true');
+  const [liHandle, setLiHandle] = useState<string>(() => (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_li_handle')) || 'kartik-bhosale');
   const [isConnectingLi, setIsConnectingLi] = useState<boolean>(false);
   const [syncCooldown, setSyncCooldown] = useState<number>(0);
   const [isSyncingX, setIsSyncingX] = useState<boolean>(false);
@@ -159,15 +160,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
 
   // URL-synced tab state (?tab=goals) & LinkedIn OAuth callback detection
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlTab = urlParams.get('tab');
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashParams = window.location.hash.includes('?') ? new URLSearchParams(window.location.hash.split('?')[1]) : null;
+    const urlTab = searchParams.get('tab') || hashParams?.get('tab');
     if (urlTab && ['profile', 'goals', 'acct'].includes(urlTab) && urlTab !== tab) {
       setTab(urlTab);
     }
 
     // Check if returning from LinkedIn OAuth
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
+    const code = searchParams.get('code') || hashParams?.get('code');
+    const state = searchParams.get('state') || hashParams?.get('state');
     if (code && state) {
       const savedState = localStorage.getItem('linkedin_oauth_state');
       if (state === savedState) {
@@ -202,6 +204,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
     toast.info('LinkedIn Disconnected', {
       description: 'Your LinkedIn account has been disconnected.',
     });
+  };
+
+  const handleSaveLinkedInHandle = () => {
+    let clean = liHandle.trim();
+    clean = clean.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//i, '').replace(/\/$/, '').replace(/^@/, '');
+    if (!clean) {
+      toast.error('Please enter a valid LinkedIn username or profile URL');
+      return;
+    }
+    localStorage.setItem('verasett_li_handle', clean);
+    localStorage.setItem('verasett_li_connected', 'true');
+    setIsLinkedInConnected(true);
+    toast.success('LinkedIn Profile Linked!', {
+      description: `Linked in/${clean} to your workspace. LinkedIn targets & tracking active.`,
+    });
+    onSaveTargets();
   };
 
   const handleSaveXHandle = async () => {
@@ -644,10 +662,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                 </div>
               </div>
 
-              {/* LinkedIn OAuth Card */}
+              {/* LinkedIn Profile Card */}
               <div className="p-4 rounded-xl border border-[var(--line)] bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#0077b5] text-white flex items-center justify-center font-bold text-sm">
+                  <div className="w-10 h-10 rounded-xl bg-[#0077b5] text-white flex items-center justify-center font-bold text-sm shrink-0">
                     in
                   </div>
                   <div>
@@ -655,7 +673,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                       <b className="text-[14px]">LinkedIn Integration</b>
                       {isLinkedInConnected ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Connected
+                          Connected (in/{liHandle})
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
@@ -664,28 +682,36 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                       )}
                     </div>
                     <p className="text-[12.5px] text-[#6b7280] mt-0.5">
-                      Connect via official LinkedIn OAuth 2.0 to sync member posts, shares, and reactions.
+                      Link your LinkedIn profile to track daily posts, outbound replies, and consistency targets.
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {isLinkedInConnected ? (
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono">in/</span>
+                    <input
+                      type="text"
+                      className="pl-7 pr-3 py-1.5 text-xs rounded-lg border border-[var(--line)] w-[150px] font-mono"
+                      value={liHandle}
+                      onChange={(e) => setLiHandle(e.target.value)}
+                      placeholder="username"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn text-xs py-1.5 px-3 h-auto whitespace-nowrap shrink-0"
+                    onClick={handleSaveLinkedInHandle}
+                  >
+                    Save & Link
+                  </button>
+                  {isLinkedInConnected && (
                     <button
                       type="button"
-                      className="btn ghost text-xs py-1.5 px-3 h-auto text-red-600 hover:bg-red-50 border border-red-200"
+                      className="btn ghost text-xs py-1.5 px-2.5 h-auto text-red-600 hover:bg-red-50"
                       onClick={handleDisconnectLinkedIn}
                     >
-                      Disconnect LinkedIn
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn text-xs py-1.5 px-3.5 h-auto bg-[#0077b5] hover:bg-[#006097] text-white border-0 flex items-center gap-1.5"
-                      onClick={handleConnectLinkedIn}
-                      disabled={isConnectingLi}
-                    >
-                      {isConnectingLi ? 'Redirecting...' : 'Connect with LinkedIn'}
+                      Disconnect
                     </button>
                   )}
                 </div>

@@ -70,7 +70,8 @@ export const isApple =
 
 const AppContent: React.FC = () => {
   const getHashRoute = () => {
-    const h = (window.location.hash || '#today').slice(1);
+    const raw = (window.location.hash || '#today').slice(1);
+    const h = raw.split('?')[0];
     return ['today', 'analytics', 'content', 'review', 'settings', 'login'].includes(h)
       ? h
       : 'today';
@@ -109,6 +110,30 @@ const AppContent: React.FC = () => {
   };
 
   const [dialogDate, setDialogDate] = useState<string>(getCurrentDateString);
+  const [isSyncingTopX, setIsSyncingTopX] = useState(false);
+
+  const handleLiveSyncX = async () => {
+    setIsSyncingTopX(true);
+    toast.info('Syncing latest posts & views from X...', { description: 'Pulling real metrics from @kartikBhosaleHQ' });
+    try {
+      const { triggerLiveXSync } = await import('./services/xSyncService');
+      const handle = (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_x_handle')) || 'kartikBhosaleHQ';
+      const res = await triggerLiveXSync(handle);
+      setIsSyncingTopX(false);
+      if (res.success) {
+        toast.success('⚡ Live X Data Synced!', {
+          description: `Loaded ${res.count} posts & ${res.views} impressions.`,
+        });
+        setTick((t) => t + 1);
+        refreshData();
+      } else {
+        toast.info('Sync checked', { description: res.message });
+      }
+    } catch (err: any) {
+      setIsSyncingTopX(false);
+      toast.error('Sync failed', { description: err.message });
+    }
+  };
   const [dialogTime, setDialogTime] = useState<string>(getCurrentTimeString);
 
 
@@ -154,6 +179,11 @@ const AppContent: React.FC = () => {
     const handleHashChange = () => {
       const newRoute = getHashRoute();
       setRoute(newRoute);
+      const raw = (window.location.hash || '').slice(1);
+      if (raw.includes('?')) {
+        const q = new URLSearchParams(raw.split('?')[1]);
+        if (q.get('tab')) setSettingsTab(q.get('tab')!);
+      }
       document.body.classList.toggle('is-login', newRoute === 'login');
       if (viewRef.current) {
         viewRef.current.scrollTop = 0;
@@ -669,6 +699,16 @@ const AppContent: React.FC = () => {
                 ]}
                 aria-label="Filter by platform"
               />
+              <button
+                className="btn btn-secondary flex items-center gap-1.5"
+                id="btn-sync-x"
+                onClick={handleLiveSyncX}
+                disabled={isSyncingTopX}
+                title="Sync latest tweets & views from X instantly"
+              >
+                <Icon name="trend" size={15} />
+                {isSyncingTopX ? 'Syncing...' : 'Sync X'}
+              </button>
               <button
                 className="btn btn-secondary flex items-center gap-1.5"
                 id="btn-import-x"
