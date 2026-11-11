@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   D,
   N,
@@ -34,6 +34,45 @@ import { cx } from '../utils/cx';
 interface TodayPageProps {
   plat: string;
 }
+
+const truncateAtWord = (str: string, len: number) => {
+  if (str.length <= len) return str;
+  const sub = str.slice(0, len);
+  const lastSpace = sub.lastIndexOf(' ');
+  return (lastSpace > len * 0.7 ? sub.slice(0, lastSpace) : sub).trim();
+};
+
+const ExpandableText: React.FC<{ text: string; maxLen?: number }> = ({ text, maxLen = 220 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (!text || text.length <= maxLen) {
+    return (
+      <div style={{ lineHeight: 1.5, wordBreak: 'break-word', whiteSpace: 'pre-line' }}>
+        {text}
+      </div>
+    );
+  }
+
+  const truncated = truncateAtWord(text, maxLen);
+
+  return (
+    <div style={{ lineHeight: 1.5, wordBreak: 'break-word' }}>
+      <span style={{ whiteSpace: isExpanded ? 'pre-line' : 'normal' }}>
+        {isExpanded ? text : `${truncated}… `}
+      </span>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsExpanded((prev) => !prev);
+        }}
+        className="text-[12px] font-semibold text-[var(--accent)] hover:underline ml-1 cursor-pointer bg-transparent border-0 p-0 inline-block focus:outline-none"
+      >
+        {isExpanded ? 'Show less' : 'Show more'}
+      </button>
+    </div>
+  );
+};
 
 export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
   const {
@@ -452,7 +491,7 @@ export const TodayPage: React.FC<TodayPageProps> = ({ plat }) => {
             recentContent.map((c) => (
               <div className="item" key={c.id}>
                 <span className="tag">{`${c.p === 'li' ? 'LinkedIn' : 'X'} · ${c.type}`}</span>
-                <div style={{ lineHeight: 1.5 }}>{c.text}</div>
+                <ExpandableText text={c.text} maxLen={240} />
                 <div className="meta">
                   <span>
                     Views <b className="mono">{c.views}</b>
