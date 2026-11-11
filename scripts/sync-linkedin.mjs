@@ -74,6 +74,22 @@ export async function syncLinkedInProfile() {
   const postsToUpsert = [];
   const dailyMap = new Map();
 
+  // Fetch existing views from Supabase so real/edited views are never overwritten by 0 or estimates
+  const existingViewsMap = new Map();
+  try {
+    const { data: existingRows } = await supabase
+      .from('posts')
+      .select('platform_post_id, views')
+      .eq('platform', 'li');
+    (existingRows || []).forEach((r) => {
+      if (r.platform_post_id) {
+        existingViewsMap.set(String(r.platform_post_id), r.views || 0);
+      }
+    });
+  } catch (e) {
+    console.warn('⚠️ Could not fetch existing views map:', e.message);
+  }
+
   let originalPostsCount = 0;
   let outboundRepliesCount = 0;
   let totalLikes = 0;
@@ -109,7 +125,12 @@ export async function syncLinkedInProfile() {
       const dateStr = publishedAt.split('T')[0];
       const likes = p.engagement?.likes || p.numLikes || 0;
       const replies = p.engagement?.comments || p.numComments || 0;
-      const views = p.engagement?.views || (likes > 0 ? likes * 10 : 0);
+      
+      // Preserve existing stored views if available; otherwise use Apify views if present
+      const existingViews = existingViewsMap.get(String(postId)) || 0;
+      const views = (p.engagement?.views !== undefined && p.engagement?.views !== null)
+        ? p.engagement.views
+        : existingViews;
       const url = p.linkedinUrl || p.socialContent?.shareUrl || `https://www.linkedin.com/posts/activity-${postId}`;
 
       originalPostsCount++;
@@ -205,21 +226,31 @@ export async function syncLinkedInProfile() {
 
   if (dailyMap.size > 0) {
     console.log(`📊 Upserting ${dailyMap.size} daily activity rows into 'activity_daily' table...`);
+    let existingDailyViews = new Map();
+    try {
+      const { data: existingDailyRows } = await supabase
+        .from('activity_daily')
+        .select('date, views')
+        .eq('platform', 'li');
+      (existingDailyRows || []).forEach((r) => existingDailyViews.set(r.date, r.views || 0));
+    } catch (e) {}
+
     for (const [date, m] of dailyMap.entries()) {
+      const viewsToSave = m.views > 0 ? m.views : (existingDailyViews.get(date) || 0);
       const { error: dErr } = await supabase.from('activity_daily').upsert(
         {
           date,
           platform: 'li',
           posts: m.posts,
           replies: m.replies,
-          views: m.views,
+          views: viewsToSave,
           likes: m.likes,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'date,platform' }
       );
       if (dErr) console.error(`❌ Error upserting daily activity for ${date}:`, dErr);
-      else console.log(`   - ${date}: ${m.posts} posts, ${m.replies} replies, ${m.likes} likes, ${m.views} views`);
+      else console.log(`   - ${date}: ${m.posts} posts, ${m.replies} replies, ${m.likes} likes, ${viewsToSave} views`);
     }
   }
 

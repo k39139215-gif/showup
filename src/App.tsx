@@ -122,6 +122,7 @@ const AppContent: React.FC = () => {
       const { triggerLiveXSync } = await import('./services/xSyncService');
       const handle = (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_x_handle')) || 'kartikBhosaleHQ';
       const res = await triggerLiveXSync(handle);
+      await syncSupabaseToMemory();
       setIsSyncingTopX(false);
       if (res.success) {
         toast.success('⚡ Live X Data Synced!', {
@@ -179,6 +180,16 @@ const AppContent: React.FC = () => {
       });
     });
 
+    // Auto-refresh when tab gains focus or every 30 seconds
+    const refreshLatest = () => {
+      syncSupabaseToMemory().then(() => {
+        setTick((t) => t + 1);
+        refreshData();
+      });
+    };
+    window.addEventListener('focus', refreshLatest);
+    const pollInterval = setInterval(refreshLatest, 30000);
+
     const handleHashChange = () => {
       const newRoute = getHashRoute();
       setRoute(newRoute);
@@ -198,6 +209,8 @@ const AppContent: React.FC = () => {
 
     return () => {
       unsubscribe();
+      window.removeEventListener('focus', refreshLatest);
+      clearInterval(pollInterval);
       window.removeEventListener('hashchange', handleHashChange);
     };
   }, [route]);
