@@ -35,7 +35,7 @@ const APIFY_TOKEN =
   '';
 const PROFILE_URL =
   process.env.LINKEDIN_PROFILE_URL ||
-  'https://www.linkedin.com/in/kartik-bhosale/';
+  'https://www.linkedin.com/in/kartik-bhosale-5a7a85443/';
 
 const POST_SEARCH_ACTOR = 'buIWk2uOUzTmcLsuB'; // harvestapi/linkedin-post-search
 const COMMENTS_ACTOR = 'harvestapi~linkedin-profile-comments';
