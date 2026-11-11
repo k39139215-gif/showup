@@ -100,6 +100,9 @@ const AppContent: React.FC = () => {
   const [dialogPlat, setDialogPlat] = useState<string>('x');
   const [dialogType, setDialogType] = useState<string>('p');
   const [dialogCount, setDialogCount] = useState<number>(1);
+  const [dialogContent, setDialogContent] = useState<string>('');
+  const [dialogViews, setDialogViews] = useState<number>(0);
+  const [dialogLikes, setDialogLikes] = useState<number>(0);
   const getCurrentTimeString = () => {
     const now = new Date();
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -397,40 +400,53 @@ const AppContent: React.FC = () => {
     setTick((prev) => prev + 1);
 
     // Save real activity into Supabase activity_daily
+    const totalViews = Math.max(0, dialogViews);
+    const totalLikes = Math.max(0, dialogLikes);
     await upsertDailyActivity({
       date: targetDateStr,
       platform: p,
       posts: t === 'p' ? n : 0,
       replies: t === 'r' ? n : 0,
+      views: totalViews,
+      likes: totalLikes,
     });
 
     // Also record real post in Supabase 'posts' table so it appears in Content Library
+    const contentText = dialogContent.trim() || `${n} ${p === 'x' ? 'X' : 'LinkedIn'} ${t === 'p' ? 'original post' : 'reply'}${n > 1 ? 's' : ''} recorded`;
     const postRecord = {
       platform: p,
       platform_post_id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      content: `${n} ${p === 'x' ? 'X' : 'LinkedIn'} ${t === 'p' ? 'original post' : 'reply'}${n > 1 ? 's' : ''} recorded`,
+      content: contentText,
       published_at: targetDate.toISOString(),
-      views: 0,
+      views: totalViews,
       replies: t === 'r' ? n : 0,
-      likes: 0,
+      likes: totalLikes,
       updated_at: new Date().toISOString(),
     };
     const { data: insertedPost } = await supabase.from('posts').insert(postRecord).select().single();
 
     // Push into memory CT
+    const engRate = totalViews > 0 ? parseFloat((((totalLikes + (t === 'r' ? n : 0)) / totalViews) * 100).toFixed(2)) : 0;
     CT.unshift({
       id: CT.length + 1,
+      dbId: insertedPost?.id,
+      platform_post_id: postRecord.platform_post_id,
       p,
       type: t === 'p' ? 'original post' : 'reply external',
       topic: 'General',
-      text: postRecord.content,
-      views: 0,
-      likes: 0,
+      text: contentText,
+      views: totalViews,
+      likes: totalLikes,
       replies: t === 'r' ? n : 0,
-      eng: 0,
+      eng: engRate,
       date: targetDate,
       note: '',
     });
+
+    // Reset dialog optional fields
+    setDialogContent('');
+    setDialogViews(0);
+    setDialogLikes(0);
 
     toast.success('Activity saved', {
       description: `Recorded ${n} ${t === 'p' ? 'post' : 'reply'}${n > 1 ? 's' : ''} on ${p === 'x' ? 'X' : 'LinkedIn'}.`,
@@ -793,6 +809,45 @@ const AppContent: React.FC = () => {
             aria-label="Count"
           />
         </div>
+        {dialogType === 'p' && (
+          <>
+            <label className="fld">
+              Post text / headline (optional)
+              <textarea
+                id="a_content"
+                rows={2}
+                value={dialogContent}
+                onChange={(e) => setDialogContent(e.target.value)}
+                placeholder={dialogPlat === 'li' ? "Paste your LinkedIn post text here..." : "Paste your post text here..."}
+                className="w-full p-2.5 rounded-[10px] border border-[var(--line)] text-[12.5px] bg-white text-[var(--ink)] resize-none"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="fld">
+                Views / Impressions (optional)
+                <input
+                  type="number"
+                  min="0"
+                  value={dialogViews || ''}
+                  onChange={(e) => setDialogViews(parseInt(e.target.value, 10) || 0)}
+                  placeholder="e.g. 120"
+                  className="w-full h-[40px] px-3 rounded-[10px] border border-[var(--line)] text-[13px] bg-white text-[var(--ink)]"
+                />
+              </label>
+              <label className="fld">
+                Likes / Reactions (optional)
+                <input
+                  type="number"
+                  min="0"
+                  value={dialogLikes || ''}
+                  onChange={(e) => setDialogLikes(parseInt(e.target.value, 10) || 0)}
+                  placeholder="e.g. 8"
+                  className="w-full h-[40px] px-3 rounded-[10px] border border-[var(--line)] text-[13px] bg-white text-[var(--ink)]"
+                />
+              </label>
+            </div>
+          </>
+        )}
         {scheduledAt && (
           <div
             style={{
