@@ -144,7 +144,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   const [xHandle, setXHandle] = useState<string>(() => localStorage.getItem('verasett_x_handle') || 'kartikBhosaleHQ');
   const [isXConnected, setIsXConnected] = useState<boolean>(() => localStorage.getItem('verasett_x_connected') !== 'false');
   const [isLinkedInConnected, setIsLinkedInConnected] = useState<boolean>(() => localStorage.getItem('verasett_li_connected') === 'true');
-  const [liHandle, setLiHandle] = useState<string>(() => (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_li_handle')) || 'kartik-bhosale');
+  const [liHandle, setLiHandle] = useState<string>(() => (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_li_handle')) || 'kartik-bhosale-5a7a85443');
   const [isConnectingLi, setIsConnectingLi] = useState<boolean>(false);
   const [syncCooldown, setSyncCooldown] = useState<number>(0);
   const [isSyncingX, setIsSyncingX] = useState<boolean>(false);
