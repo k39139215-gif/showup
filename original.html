@@ -178,7 +178,7 @@ dialog .fld{margin-top:14px}dialog menu{display:flex;gap:8px;justify-content:fle
       <div class="tray"><div class="tb" style="padding:12px 14px">
         <div class="kv"><span class="muted" style="font-size:12.5px">Current streak</span><span class="pill or" id="sk"></span></div>
         <div class="muted" style="font-size:12px;margin-top:6px">Asia/Kolkata day boundary</div></div></div>
-      <div class="user"><div class="av"></div><div><b style="font-weight:500">Kartik Sharma</b><small>Asia/Kolkata</small></div>
+      <div class="user"><div class="av"></div><div><b style="font-weight:500">Kartik Bhosale</b><small>Asia/Kolkata</small></div>
         <button id="lo" title="Sign out"></button></div>
     </div>
   </aside>
@@ -436,7 +436,7 @@ PG.review=()=>{
 PG.settings=()=>{
   const tabs=[['profile','Profile'],['goals','Daily goals &amp; timezone'],['acct','Connected accounts &amp; data']];
   const body={
-    profile:`<div class="fgrid"><label class="fld">Full name<input value="Kartik Sharma"></label><label class="fld">Product focus<input value="Verasett (AR cash application &amp; NetSuite/SAP reconciliations)" readonly></label></div>
+    profile:`<div class="fgrid"><label class="fld">Full name<input value="Kartik Bhosale"></label><label class="fld">Product focus<input value="ShowUp (Social Consistency Tracker)" readonly></label></div>
       <p class="muted" style="margin-top:14px;font-size:13px">Light theme only in this design pass.</p>`,
     goals:`<div class="fgrid">${[['xp','X original posts / day'],['xr','X outbound replies / day'],['lp','LinkedIn posts / day'],['lr','LinkedIn replies / day']].map(([k,t])=>`<label class="fld">${t}<input type="number" min="0" id="g_${k}" value="${G[k]}"></label>`).join('')}
       <label class="fld">Timezone<select><option>Asia/Kolkata</option></select></label></div>
