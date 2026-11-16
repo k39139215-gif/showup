@@ -1,6 +1,8 @@
 import { supabase, DbDailyActivity, DbPost, DbGoal } from '../lib/supabase';
 import { D, N, dayAt, CT, ContentItem } from '../data';
 import { formatLocalDate } from '../utils/dateMath';
+import { isPreviewEnvironment } from '../utils/env';
+import { seedSyntheticData } from './syntheticData';
 
 export interface DayRecord {
   date: string;
@@ -22,6 +24,22 @@ export async function fetchDailyActivityRange(
   endDate: string
 ): Promise<{ data: DayRecord[]; hasData: boolean }> {
   try {
+    if (isPreviewEnvironment()) {
+      const records: DayRecord[] = [];
+      let hasAny = false;
+      for (let i = 0; i < N; i++) {
+        const dStr = formatLocalDate(dayAt(i));
+        if (dStr >= startDate && dStr <= endDate) {
+          records.push({
+            date: dStr,
+            ...D[i],
+          });
+          if (D[i].xp > 0 || D[i].xr > 0 || D[i].lp > 0 || D[i].lr > 0) hasAny = true;
+        }
+      }
+      return { data: records, hasData: hasAny };
+    }
+
     const { data, error } = await supabase
       .from('activity_daily')
       .select('*')
@@ -89,6 +107,26 @@ export async function upsertDailyActivity(entry: {
   likes?: number;
 }): Promise<boolean> {
   try {
+    if (isPreviewEnvironment()) {
+      for (let i = 0; i < N; i++) {
+        if (formatLocalDate(dayAt(i)) === entry.date) {
+          if (entry.platform === 'x') {
+            D[i].xp += entry.posts || 0;
+            D[i].xr += entry.replies || 0;
+            D[i].xv += entry.views || 0;
+            D[i].xl += entry.likes || 0;
+          } else {
+            D[i].lp += entry.posts || 0;
+            D[i].lr += entry.replies || 0;
+            D[i].li += entry.views || 0;
+            D[i].ll += entry.likes || 0;
+          }
+          break;
+        }
+      }
+      return true;
+    }
+
     // Check if record exists to add/increment
     const { data: existing } = await supabase
       .from('activity_daily')
@@ -126,6 +164,10 @@ export async function upsertDailyActivity(entry: {
  * Real-time subscription to changes in activity_daily table
  */
 export function subscribeToDailyActivity(onChange: () => void) {
+  if (isPreviewEnvironment()) {
+    return () => {};
+  }
+
   const channel = supabase
     .channel('public:activity_daily_changes')
     .on(
@@ -147,6 +189,11 @@ export function subscribeToDailyActivity(onChange: () => void) {
  */
 export async function syncSupabaseToMemory(): Promise<boolean> {
   try {
+    if (isPreviewEnvironment()) {
+      seedSyntheticData();
+      return true;
+    }
+
     const { data, error } = await supabase.from('activity_daily').select('*');
     if (error || !data || data.length === 0) {
       for (let i = 0; i < N; i++) {
@@ -243,6 +290,12 @@ export async function syncSupabaseToMemory(): Promise<boolean> {
  */
 export async function deleteContentItem(item: ContentItem): Promise<boolean> {
   try {
+    if (isPreviewEnvironment()) {
+      const ctIdx = CT.findIndex((c) => c.id === item.id || (item.dbId && c.dbId === item.dbId));
+      if (ctIdx !== -1) CT.splice(ctIdx, 1);
+      return true;
+    }
+
     // 1. Delete from Supabase 'posts' table
     if (item.dbId) {
       await supabase.from('posts').delete().eq('id', item.dbId);
@@ -352,6 +405,21 @@ export async function updateContentItem(
   }
 ): Promise<boolean> {
   try {
+    if (isPreviewEnvironment()) {
+      item.text = updates.text;
+      item.p = updates.p;
+      item.type = updates.type;
+      item.topic = updates.topic;
+      item.views = updates.views;
+      item.likes = updates.likes;
+      item.replies = updates.replies;
+      item.eng = updates.views > 0 ? parseFloat((((updates.likes + updates.replies) / updates.views) * 100).toFixed(2)) : 0;
+      if (updates.date) {
+        item.date = updates.date;
+      }
+      return true;
+    }
+
     const oldViews = item.views || 0;
     const oldLikes = item.likes || 0;
     const oldReplies = item.replies || 0;

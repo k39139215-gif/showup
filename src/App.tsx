@@ -1,5 +1,6 @@
 import { checkAndTriggerRealtimeStreakAlert } from './services/notificationService';
 import { ShowUpLogo } from './components/ShowUpLogo';
+import { isPreviewEnvironment } from './utils/env';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarDate } from '@internationalized/date';
@@ -116,6 +117,10 @@ const AppContent: React.FC = () => {
   const [isSyncingTopX, setIsSyncingTopX] = useState(false);
 
   const handleLiveSyncX = async () => {
+    if (isPreviewEnvironment()) {
+      toast.info('Demo Mode', { description: 'Live sync is disabled on the public preview.' });
+      return;
+    }
     setIsSyncingTopX(true);
     toast.info('Syncing latest posts & views from X...', { description: 'Pulling real metrics from @kartikBhosaleHQ' });
     try {
@@ -180,15 +185,18 @@ const AppContent: React.FC = () => {
       });
     });
 
-    // Auto-refresh when tab gains focus or every 30 seconds
+    // Auto-refresh when tab gains focus or every 30 seconds (in live mode only)
     const refreshLatest = () => {
       syncSupabaseToMemory().then(() => {
         setTick((t) => t + 1);
         refreshData();
       });
     };
-    window.addEventListener('focus', refreshLatest);
-    const pollInterval = setInterval(refreshLatest, 30000);
+    let pollInterval: any = null;
+    if (!isPreviewEnvironment()) {
+      window.addEventListener('focus', refreshLatest);
+      pollInterval = setInterval(refreshLatest, 30000);
+    }
 
     const handleHashChange = () => {
       const newRoute = getHashRoute();
@@ -209,8 +217,10 @@ const AppContent: React.FC = () => {
 
     return () => {
       unsubscribe();
-      window.removeEventListener('focus', refreshLatest);
-      clearInterval(pollInterval);
+      if (pollInterval) {
+        window.removeEventListener('focus', refreshLatest);
+        clearInterval(pollInterval);
+      }
       window.removeEventListener('hashchange', handleHashChange);
     };
   }, [route]);
@@ -436,13 +446,17 @@ const AppContent: React.FC = () => {
       likes: totalLikes,
       updated_at: new Date().toISOString(),
     };
-    const { data: insertedPost } = await supabase.from('posts').insert(postRecord).select().single();
+    let insertedPostId: string | undefined = undefined;
+    if (!isPreviewEnvironment()) {
+      const { data: insertedPost } = await supabase.from('posts').insert(postRecord).select().single();
+      insertedPostId = insertedPost?.id;
+    }
 
     // Push into memory CT
     const engRate = totalViews > 0 ? parseFloat((((totalLikes + (t === 'r' ? n : 0)) / totalViews) * 100).toFixed(2)) : 0;
     CT.unshift({
       id: CT.length + 1,
-      dbId: insertedPost?.id,
+      dbId: insertedPostId,
       platform_post_id: postRecord.platform_post_id,
       p,
       type: t === 'p' ? 'original post' : 'reply external',
@@ -653,12 +667,14 @@ const AppContent: React.FC = () => {
           />
           <div className="flex-1 min-w-0">
             <b style={{ fontWeight: 500 }} className="truncate block">
-              {currentUser?.user_metadata?.full_name ||
-                currentUser?.user_metadata?.name ||
-                (currentUser?.email ? currentUser.email.split('@')[0] : (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_profile_name')) || 'Kartik Bhosale')}
+              {isPreviewEnvironment()
+                ? 'ShowUp Creator'
+                : (currentUser?.user_metadata?.full_name ||
+                  currentUser?.user_metadata?.name ||
+                  (currentUser?.email ? currentUser.email.split('@')[0] : (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_profile_name')) || 'Kartik Bhosale'))}
             </b>
             <small className="truncate block text-[11px] text-[#6b7280]">
-              {currentUser?.email || '@kartikBhosaleHQ'}
+              {isPreviewEnvironment() ? '@showup_creator' : (currentUser?.email || '@kartikBhosaleHQ')}
             </small>
           </div>
           <TooltipTrigger delay={100}>

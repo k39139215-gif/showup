@@ -75,7 +75,7 @@ export const pick = (d: DayData, k: 'p' | 'r' | 'v' | 'l', plat: string) =>
     0
   );
 
-export const TOPICS = ['AR', 'Cash Application', 'Deductions', 'NetSuite', 'SAP'] as const;
+export const TOPICS = ['Growth', 'Product', 'Engineering', 'Habits', 'Distribution', 'Strategy'] as const;
 
 export interface ContentItem {
   id: number;

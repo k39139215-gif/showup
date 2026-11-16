@@ -218,7 +218,7 @@ export const ReviewPage: React.FC = () => {
         </Tray>
       </div>
 
-      <Tray icon="flask" title="Targeted growth experiments for Verasett">
+      <Tray icon="flask" title="Targeted growth experiments for ShowUp">
         <div className="g k3">
           {ex.map((e, idx) => (
             <div className="exp" key={idx}>

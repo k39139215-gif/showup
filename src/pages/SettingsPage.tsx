@@ -21,6 +21,7 @@ import { TOPICS } from '../data';
 import { TIMEZONE_OPTIONS } from '../utils/dateMath';
 import { getLinkedInAuthUrl } from '../services/linkedinService';
 import { triggerLiveXSync } from '../services/xSyncService';
+import { isPreviewEnvironment } from '../utils/env';
 
 interface SettingsPageProps {
   tab: string;
@@ -38,8 +39,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   const [formG, setFormG] = useState<Goals>({ ...G });
   const [saveMsg, setSaveMsg] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kolkata');
+  const isPreview = isPreviewEnvironment();
   const [notifSettings, setNotifSettings] = useState(() => getNotificationSettings());
-  const [recipientEmail, setRecipientEmail] = useState(() => notifSettings.recipientEmail || 'k39139215@gmail.com');
+  const [recipientEmail, setRecipientEmail] = useState(() => (isPreview ? 'demo@showup.app' : notifSettings.recipientEmail || 'k39139215@gmail.com'));
   const [desktopPermission, setDesktopPermission] = useState<NotificationPermission>(() =>
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
   );
@@ -141,14 +143,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
   const [monitoredTopics, setMonitoredTopics] = useState<string[]>(() => [...TOPICS]);
 
   // Social account integration state
-  const [xHandle, setXHandle] = useState<string>(() => localStorage.getItem('verasett_x_handle') || 'kartikBhosaleHQ');
+  const [xHandle, setXHandle] = useState<string>(() => (isPreview ? 'showup_creator' : localStorage.getItem('verasett_x_handle') || 'kartikBhosaleHQ'));
   const [isXConnected, setIsXConnected] = useState<boolean>(() => localStorage.getItem('verasett_x_connected') !== 'false');
   const [isLinkedInConnected, setIsLinkedInConnected] = useState<boolean>(() => localStorage.getItem('verasett_li_connected') === 'true');
-  const [liHandle, setLiHandle] = useState<string>(() => (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_li_handle')) || 'kartik-bhosale-5a7a85443');
+  const [liHandle, setLiHandle] = useState<string>(() => (isPreview ? 'showup-creator' : (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_li_handle')) || 'kartik-bhosale-5a7a85443'));
   const [isConnectingLi, setIsConnectingLi] = useState<boolean>(false);
   const [syncCooldown, setSyncCooldown] = useState<number>(0);
   const [isSyncingX, setIsSyncingX] = useState<boolean>(false);
-  const [profileName, setProfileName] = useState<string>(() => (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_profile_name')) || 'Kartik Bhosale');
+  const [profileName, setProfileName] = useState<string>(() => (isPreview ? 'ShowUp Creator' : (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_profile_name')) || 'Kartik Bhosale'));
 
   useEffect(() => {
     if (syncCooldown <= 0) return;
@@ -308,6 +310,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
       </div>
 
       <div style={{ maxWidth: '820px' }}>
+        {isPreview && (
+          <div className="mb-4 p-3 rounded-xl bg-orange-50 border border-orange-200 text-orange-900 text-[12.5px] flex items-center gap-2.5">
+            <span className="text-base">✨</span>
+            <div>
+              <b>Preview Demo Mode:</b> Showing realistic synthetic creator activity to keep personal social accounts private.
+            </div>
+          </div>
+        )}
         <Tray icon="settings" title={currentTabTitle}>
           {tab === 'profile' && (
             <>
@@ -326,7 +336,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ tab, setTab, onSaveT
                 <label className="fld">
                   Product focus
                   <input
-                    defaultValue="Verasett (AR cash application & NetSuite/SAP reconciliations)"
+                    defaultValue={isPreview ? "ShowUp (Social Consistency Tracker)" : "ShowUp (AR cash application & NetSuite/SAP reconciliations)"}
                     readOnly
                   />
                 </label>
