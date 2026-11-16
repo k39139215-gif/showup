@@ -1,7 +1,7 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xsexkrxlyirnnroxenjl.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_Na9A_qM6aFzYgPYsaQktmQ_D6O-C-e7';
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL || 'k39139215@gmail.com';
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const RECIPIENT_EMAIL = process.env.RECIPIENT_EMAIL || '';
 
 async function getWeeklyStats() {
   const today = new Date();

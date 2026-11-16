@@ -25,11 +25,11 @@ try {
 const SUPABASE_URL =
   process.env.VITE_SUPABASE_URL ||
   process.env.SUPABASE_URL ||
-  'https://xsexkrxlyirnnroxenjl.supabase.co';
+  '';
 const SUPABASE_ANON_KEY =
   process.env.VITE_SUPABASE_ANON_KEY ||
   process.env.SUPABASE_ANON_KEY ||
-  'sb_publishable_Na9A_qM6aFzYgPYsaQktmQ_D6O-C-e7';
+  '';
 const APIFY_TOKEN =
   process.env.APIFY_TOKEN ||
   '';

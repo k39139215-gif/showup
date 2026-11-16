@@ -1,7 +1,30 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://xsexkrxlyirnnroxenjl.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_Na9A_qM6aFzYgPYsaQktmQ_D6O-C-e7';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Auto-load .env from root
+try {
+  const envPath = path.resolve(__dirname, '..', '.env');
+  if (fs.existsSync(envPath)) {
+    const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+    lines.forEach((l) => {
+      const idx = l.indexOf('=');
+      if (idx !== -1) {
+        const k = l.slice(0, idx).trim();
+        const v = l.slice(idx + 1).trim();
+        if (k && !process.env[k]) process.env[k] = v;
+      }
+    });
+  }
+} catch (e) {}
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 const HANDLE = process.env.X_HANDLE || 'kartikBhosaleHQ';
 
 export async function syncXPublicProfile(handle = HANDLE) {

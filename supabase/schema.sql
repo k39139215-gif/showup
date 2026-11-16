@@ -1,6 +1,6 @@
 -- ==============================================================================
--- VERASETT SOCIAL DASHBOARD: SUPABASE PRODUCTION DATABASE SCHEMA
--- Run this script in your Supabase SQL Editor (https://supabase.com/dashboard/project/xsexkrxlyirnnroxenjl/sql)
+-- SHOWUP SOCIAL DASHBOARD: DATABASE SCHEMA TEMPLATE
+-- Run this script in your Supabase SQL Editor
 -- ==============================================================================
 
 -- 1. Daily Aggregated Activity Table
