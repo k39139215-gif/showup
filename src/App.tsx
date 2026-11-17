@@ -30,7 +30,7 @@ import { Modal } from './components/base/modal/modal';
 import { NumberField } from './components/base/number-field/number-field';
 import { DateStoreProvider, useDateRangeStore } from './store/dateStore';
 import { ImportXModal } from './components/ImportXModal';
-import { XImportResult } from './services/xSyncService';
+import { XImportResult, triggerLiveXSync } from './services/xSyncService';
 import {
   upsertDailyActivity,
   syncSupabaseToMemory,
@@ -124,7 +124,6 @@ const AppContent: React.FC = () => {
     setIsSyncingTopX(true);
     toast.info('Syncing latest posts & views from X...', { description: 'Pulling real metrics from @kartikBhosaleHQ' });
     try {
-      const { triggerLiveXSync } = await import('./services/xSyncService');
       const handle = (typeof localStorage !== 'undefined' && localStorage.getItem('verasett_x_handle')) || 'kartikBhosaleHQ';
       const res = await triggerLiveXSync(handle);
       await syncSupabaseToMemory();

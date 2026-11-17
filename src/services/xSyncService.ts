@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { formatLocalDate } from '../utils/dateMath';
+import { syncSupabaseToMemory } from './activityService';
 
 export interface XImportResult {
   success: boolean;
@@ -185,12 +186,10 @@ export async function triggerLiveXSync(handle: string): Promise<{
     }
 
     // Always sync database records into application memory
-    const { syncSupabaseToMemory } = await import('./activityService');
     await syncSupabaseToMemory();
 
     // Inspect records in Supabase
-    const { supabase: sb } = await import('../lib/supabase');
-    const { data: posts } = await sb.from('posts').select('*').eq('platform', 'x');
+    const { data: posts } = await supabase.from('posts').select('*').eq('platform', 'x');
     const count = posts?.length || 0;
     const views = posts?.reduce((acc: number, p: any) => acc + (p.views || 0), 0) || 0;
 
