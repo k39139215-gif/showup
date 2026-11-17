@@ -13,6 +13,8 @@ import { ReviewPage } from './pages/ReviewPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import { UnifiedDatePicker } from './components/UnifiedDatePicker';
+import { BoardDateInput } from './components/BoardDateInput';
+import { BoardTimeInput } from './components/BoardTimeInput';
 import { BoardSelect } from './components/base/select/BoardSelect';
 import { BoardSegmentedControl } from './components/base/segmented-control/BoardSegmentedControl';
 import { Toaster, toast } from './components/base/toast/toast';
@@ -807,22 +809,18 @@ const AppContent: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <label className="fld">
             Date
-            <input
-              type="date"
+            <BoardDateInput
               id="a_date"
               value={dialogDate}
-              onChange={(e) => setDialogDate(e.target.value)}
-              className="w-full h-[40px] px-3 rounded-[10px] border border-[var(--line)] text-[13px] bg-white text-[var(--ink)]"
+              onChange={setDialogDate}
             />
           </label>
           <label className="fld">
             Post Time (when published)
-            <input
-              type="time"
+            <BoardTimeInput
               id="a_time"
               value={dialogTime}
-              onChange={(e) => setDialogTime(e.target.value)}
-              className="w-full h-[40px] px-3 rounded-[10px] border border-[var(--line)] text-[13px] font-mono bg-white text-[var(--ink)]"
+              onChange={setDialogTime}
             />
           </label>
         </div>

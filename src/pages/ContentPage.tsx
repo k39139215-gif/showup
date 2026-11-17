@@ -3,6 +3,8 @@ import { CT, TOPICS, ContentItem } from '../data';
 import { Icon, Tray } from '../utils';
 import { useDateRangeStore } from '../store/dateStore';
 import { BoardSelect, SelectOption } from '../components/base/select/BoardSelect';
+import { BoardDateInput } from '../components/BoardDateInput';
+import { BoardTimeInput } from '../components/BoardTimeInput';
 import { Tooltip, TooltipTrigger } from '../components/base/tooltip/tooltip';
 import { toast } from '../components/base/toast/toast';
 import { useLoadingState } from '../hooks/useLoadingState';
@@ -921,22 +923,18 @@ export const ContentPage: React.FC<ContentPageProps> = ({
         <div className="grid grid-cols-2 gap-3">
           <label className="fld">
             Date
-            <input
-              type="date"
+            <BoardDateInput
               id="edit_date"
               value={editForm.date}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, date: e.target.value }))}
-              className="w-full h-[40px] px-3 rounded-[10px] border border-[var(--line)] text-[13px] bg-white text-[var(--ink)]"
+              onChange={(date) => setEditForm((prev) => ({ ...prev, date }))}
             />
           </label>
           <label className="fld">
             Post Time (when published)
-            <input
-              type="time"
+            <BoardTimeInput
               id="edit_time"
               value={editForm.time}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, time: e.target.value }))}
-              className="w-full h-[40px] px-3 rounded-[10px] border border-[var(--line)] text-[13px] font-mono bg-white text-[var(--ink)]"
+              onChange={(time) => setEditForm((prev) => ({ ...prev, time }))}
             />
           </label>
         </div>
